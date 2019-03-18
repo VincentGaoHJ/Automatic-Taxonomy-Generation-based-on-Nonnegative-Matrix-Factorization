@@ -5,67 +5,48 @@ Created on Fri Feb  1 14:58:57 2019
 @author: Haojun Gao
 """
 
-import numpy as np
+import os
 import nmf
+import datetime
+import numpy as np
+import scipy.sparse as sp
+
+# 获取当前目录并创建保存文件夹
+root = os.getcwd()
+nowTime = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
+folder = os.path.join(root, nowTime)
+if not os.path.exists(folder):
+    os.makedirs(folder)
 
 # Initialize the number of cluster
-k = 2
+k = 5
 
-# Initialize the matrix
-X = [  
-     [5,3,0,1],  
-     [4,0,0,1],  
-     [1,1,0,5],  
-     [1,0,0,4],  
-     [0,1,5,4],  
-    ]  
+# 加载TFIDF矩阵
+print("[main]Loading Matrix X")
+X = sp.load_npz('user_mingci_tfidf3.npz')
 
 # Initialize the constraint matrix for comments
-D_u = [
-       [0,1,0,1,0],
-       [1,0,0,0,0],
-       [1,1,0,0,1],
-       [0,1,1,0,1],
-       [0,0,0,0,0],
-      ]
+print("[main]Loading Matrix W_u & D_u")
+W_u = sp.load_npz('W_u.npz')
+D_u = sp.load_npz('D_u.npz')
 
 # Initialize the constraint matrix for spots
-D_v = [
-       [0,1,0,1,0],
-       [1,0,0,0,0],
-       [1,1,0,0,1],
-       [0,1,1,0,1],
-       [0,0,0,0,0],
-      ]
+print("[main]Loading Matrix W_v & D_v")
+W_v = sp.load_npz('W_v.npz')
+D_v = sp.load_npz('D_v.npz')
 
+n = X.shape[0]
+m = X.shape[1]
 
-n = len(X)  
-m = len(X[0])  
+print('[main]length n is : ', n)
+print('[main]length m is : ', m)
 
-X = np.array(X)  
-D_u = np.array(D_u)  
-D_v = np.array(D_v)  
+U = sp.rand(n, k, density=1, format='csr', dtype=np.dtype(float), random_state=None)
+H = sp.rand(k, k, density=1, format='csr', dtype=np.dtype(float), random_state=None)
+V = sp.rand(m, k, density=1, format='csr', dtype=np.dtype(float), random_state=None)
 
-# Initialize the W_u & W_v
-W_u = np.zeros(shape=(n,n))
-W_v = np.zeros(shape=(m,m))
+U, H, V = nmf.NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, folder)
 
-sum_W_u = np.sum(D_u,axis=1)
-sum_W_v = np.sum(D_v,axis=1)
-
-for i in range(n):
-    W_u[i][i] = sum_W_u[i]
-    
-for h in range(m):
-    W_v[h][h] = sum_W_v[h]
-
-   
-U = np.random.rand(n,k)  
-H = np.random.rand(k,k)  
-V = np.random.rand(m,k)  
-   
-U_final, H_final, V_final = nmf.NMF(X, U, H, V, D_u, W_u, D_v, W_v)  
-
-print("\nU_final:\n\n", U_final)
-print("\nH_final:\n\n", H_final)
-print("\nV_final:\n\n", V_final)
+print("\nU_final:\n\n", U)
+print("\nH_final:\n\n", H)
+print("\nV_final:\n\n", V)
