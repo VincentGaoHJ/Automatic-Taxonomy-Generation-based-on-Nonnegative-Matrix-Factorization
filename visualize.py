@@ -6,6 +6,7 @@ Created on 2019/3/18
 """
 
 import os
+import heapq
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
@@ -19,26 +20,34 @@ def normalize(data):
     return data
 
 
-def visualize(U, V, loss_matrix, folder, step):
+def visualize(U, V, loss_matrix, folder, step, visual_type):
     target_names = ["dimension-1", "dimension-2", "dimension-3"]
     feature_names = ["class-1", "class-2", "class-3"]
     figure_names = ["Loss of Matrix U", "Loss of Matrix V", "Loss of Matrix X", "Loss of Over-all"]
     label_names = ["Matrix U", "Matrix V", "Matrix X", "Over-all"]
 
-    pca = PCA(n_components=3)
-
     X_U = U.toarray()
     X_V = V.toarray()
 
-    print(X_U)
-    print(X_V)
     X_U = normalize(X_U)
     X_V = normalize(X_V)
-    print(X_U)
-    print(X_V)
 
-    X_U = pca.fit_transform(X_U)
-    X_V = pca.fit_transform(X_V)
+    if visual_type == 0:
+        pca = PCA(n_components=3)
+        X_U = pca.fit_transform(X_U)
+        X_V = pca.fit_transform(X_V)
+    else:
+        X_U_reduce = np.sum(X_U, 0)
+        X_V_reduce = np.sum(X_V, 0)
+
+        X_U_red_sma = map(X_U_reduce.tolist().index, heapq.nsmallest(len(X_U_reduce) - 3, X_U_reduce))
+        X_V_red_sma = map(X_V_reduce.tolist().index, heapq.nsmallest(len(X_V_reduce) - 3, X_V_reduce))
+
+        X_U_red_sma = list(X_U_red_sma)
+        X_V_red_sma = list(X_V_red_sma)
+
+        X_U = np.delete(X_U, X_U_red_sma, axis=1)
+        X_V = np.delete(X_V, X_V_red_sma, axis=1)
 
     y_U = np.zeros(len(X_U))
     y_V = np.zeros(len(X_V))
@@ -74,7 +83,6 @@ def visualize(U, V, loss_matrix, folder, step):
         plt.title(figure_names[i])
         plt.legend()
 
-    file_path = os.path.join(folder, str(step+1) + ".png")
+    file_path = os.path.join(folder, str(step + 1) + ".png")
     plt.savefig(file_path)
     plt.show()
-

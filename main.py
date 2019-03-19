@@ -21,19 +21,33 @@ if not os.path.exists(folder):
 # Initialize the number of cluster
 k = 5
 
+# Initialize type of visualization: 0 for PCA and 1 for choosing the important.
+visual_type = 1
+
+# Initialize the constraint: False for not using constraint and True for the opposite.
+flag_U = False
+flag_V = True
+
+W_u = None
+D_u = None
+W_v = None
+D_v = None
+
 # 加载TFIDF矩阵
 print("[main]Loading Matrix X")
-X = sp.load_npz('user_mingci_tfidf3.npz')
+X = sp.load_npz('POI_matrix.npz')
 
 # Initialize the constraint matrix for comments
-print("[main]Loading Matrix W_u & D_u")
-W_u = sp.load_npz('W_u.npz')
-D_u = sp.load_npz('D_u.npz')
+if flag_U:
+    print("[main]Loading Matrix W_u & D_u")
+    W_u = sp.load_npz('W_u.npz')
+    D_u = sp.load_npz('D_u.npz')
 
 # Initialize the constraint matrix for spots
-print("[main]Loading Matrix W_v & D_v")
-W_v = sp.load_npz('W_v.npz')
-D_v = sp.load_npz('D_v.npz')
+if flag_V:
+    print("[main]Loading Matrix W_v & D_v")
+    W_v = sp.load_npz('W_v.npz')
+    D_v = sp.load_npz('D_v.npz')
 
 n = X.shape[0]
 m = X.shape[1]
@@ -45,7 +59,7 @@ U = sp.rand(n, k, density=1, format='csr', dtype=np.dtype(float), random_state=N
 H = sp.rand(k, k, density=1, format='csr', dtype=np.dtype(float), random_state=None)
 V = sp.rand(m, k, density=1, format='csr', dtype=np.dtype(float), random_state=None)
 
-U, H, V = nmf.NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, folder)
+U, H, V = nmf.NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, flag_U, flag_V, folder, visual_type)
 
 print("\nU_final:\n\n", U)
 print("\nH_final:\n\n", H)
