@@ -5,9 +5,11 @@ Created on Wed Jan 30 14:14:53 2019
 @author: Haojun Gao
 """
 
+import os
 import numpy as np
 import scipy.sparse as sp
 from visualize import visualize
+from table_image import create_table
 
 
 def select_rows_from_csr_mtx(csr_mtx, row_head_indices, row_tail_indices):
@@ -34,7 +36,7 @@ def loss(X, U, H, V, D_u, D_v, W_u, W_v, flag_U, flag_V, lamda_u, lamda_v):
     n = U.shape[0]
 
     while (i < n - 1):
-        print("[loss]finish:", i)
+        print("[loss]Part1 finish:", i)
         if i + batch < n - 1:
             Part1 = select_rows_from_csr_mtx(X, i, i + batch - 1) - select_rows_from_csr_mtx(U, i,
                                                                                              i + batch - 1) * H * V.T
@@ -57,7 +59,7 @@ def loss(X, U, H, V, D_u, D_v, W_u, W_v, flag_U, flag_V, lamda_u, lamda_v):
         Part5 = V.T * (D_v - W_v) * V
         sta5 = lamda_v * np.trace(Part5.toarray())
 
-    print(sta1 + sta3 + sta5, sta1, sta3, sta5)
+    print("[loss]Results: ", sta1 + sta3 + sta5, sta1, sta3, sta5)
 
     return [sta3, sta5, sta1, sta1 + sta3 + sta5]
 
@@ -68,7 +70,16 @@ def update(I, me, de):
     return I
 
 
-def NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, flag_U, flag_V, folder, visual_type, steps=1000, lamda_u=0.1, lamda_v=0.1):
+def save_model(U, V, folder_model, step):
+    path_U = os.path.join(folder_model, str(step) + "_U_sp.npz")
+    path_V = os.path.join(folder_model, str(step) + "_V_sp.npz")
+    sp.save_npz(path_U, U, True)
+    sp.save_npz(path_V, V, True)
+
+
+def NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, flag_U, flag_V, folder_image, folder_model, folder_table, visual_type,
+           steps=1000,
+           lamda_u=0.1, lamda_v=0.001):
     loss_matrix = None
 
     for step in range(steps):
@@ -108,8 +119,15 @@ def NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, flag_U, flag_V, folder, visual_type, 
             loss_matrix = row
 
         # visualize
-        if step % 2 == 1:
-            print("[NMF]Visualize")
-            visualize(U, V, loss_matrix, folder, step, visual_type)
+        if step % 10 == 1:
+            print("[NMF]Visualize the table")
+            create_table(U, V, folder_table, step)
+            print("[NMF]Visualize the image")
+            visualize(U, V, loss_matrix, folder_image, step, visual_type)
+
+        # save model
+        if step % 100 == 1:
+            print("[NMF]Save Model")
+            save_model(U, V, folder_model, step)
 
     return U, H, V

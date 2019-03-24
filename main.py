@@ -15,8 +15,13 @@ import scipy.sparse as sp
 root = os.getcwd()
 nowTime = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
 folder = os.path.join(root, nowTime)
-if not os.path.exists(folder):
-    os.makedirs(folder)
+os.makedirs(folder)
+folder_image = os.path.join(folder, "image")
+folder_model = os.path.join(folder, "model")
+folder_table = os.path.join(folder, "table")
+os.makedirs(folder_image)
+os.makedirs(folder_model)
+os.makedirs(folder_table)
 
 # Initialize the number of cluster
 k = 5
@@ -26,7 +31,7 @@ visual_type = 1
 
 # Initialize the constraint: False for not using constraint and True for the opposite.
 flag_U = False
-flag_V = True
+flag_V = False
 
 W_u = None
 D_u = None
@@ -59,7 +64,8 @@ U = sp.rand(n, k, density=1, format='csr', dtype=np.dtype(float), random_state=N
 H = sp.rand(k, k, density=1, format='csr', dtype=np.dtype(float), random_state=None)
 V = sp.rand(m, k, density=1, format='csr', dtype=np.dtype(float), random_state=None)
 
-U, H, V = nmf.NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, flag_U, flag_V, folder, visual_type)
+U, H, V = nmf.NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, flag_U, flag_V, folder_image, folder_model, folder_table,
+                     visual_type)
 
 print("\nU_final:\n\n", U)
 print("\nH_final:\n\n", H)
