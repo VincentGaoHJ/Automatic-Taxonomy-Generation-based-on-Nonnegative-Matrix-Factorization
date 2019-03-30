@@ -13,6 +13,13 @@ from table_image import create_table
 
 
 def select_rows_from_csr_mtx(csr_mtx, row_head_indices, row_tail_indices):
+    """
+    因为库中没有切割稀疏矩阵的函数，所以就自己写了一个
+    :param csr_mtx: csr格式的稀疏矩阵
+    :param row_head_indices: 需要截取的开始的行号
+    :param row_tail_indices: 需要截取的结束的行号
+    :return:
+    """
     indptr = csr_mtx.indptr
     indices = csr_mtx.indices
     data = csr_mtx.data
@@ -38,12 +45,14 @@ def loss(X, U, H, V, D_u, D_v, W_u, W_v, flag_U, flag_V, lamda_u, lamda_v):
     while (i < n - 1):
         print("[loss]Part1 finish:", i)
         if i + batch < n - 1:
-            Part1 = select_rows_from_csr_mtx(X, i, i + batch - 1) - select_rows_from_csr_mtx(U, i,
-                                                                                             i + batch - 1) * H * V.T
+            Part1 = select_rows_from_csr_mtx(X, i, i + batch - 1) - \
+                    select_rows_from_csr_mtx(U, i, i + batch - 1) * H * V.T
             i += batch
         else:
-            Part1 = select_rows_from_csr_mtx(X, i, n - 1) - select_rows_from_csr_mtx(U, i, n - 1) * H * V.T
+            Part1 = select_rows_from_csr_mtx(X, i, n - 1) - \
+                    select_rows_from_csr_mtx(U, i, n - 1) * H * V.T
             i = n - 1
+
         sta1_temp = sp.csr_matrix.sum(sp.csr_matrix.multiply(Part1, Part1))
         sta1 += sta1_temp
 
@@ -77,7 +86,7 @@ def save_model(U, V, node, step):
     sp.save_npz(path_V, V, True)
 
 
-def NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, flag_U, flag_V, node, visual_type, steps=10, lamda_u=0.1, lamda_v=0.001):
+def NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, flag_U, flag_V, node, visual_type, steps=1000, lamda_u=0.1, lamda_v=0.001):
     loss_matrix = None
 
     for step in range(steps):

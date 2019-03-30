@@ -9,6 +9,7 @@ import os
 import nmf
 import time
 import shutil
+import pickle
 import datetime
 import numpy as np
 import scipy.sparse as sp
@@ -133,7 +134,66 @@ def prepare_matrix(k, node, flag_U, flag_V):
     return W_u, D_u, W_v, D_v, U, H, V, X
 
 
+def classify(mat, list_poi, X, num):
+    """
+    输出属于下一层第num类的新X以及新景点的list
+    :param mat: 这一层景点的概率矩阵
+    :param list_poi: 这一层景点的list
+    :param X: 这一层的X
+    :param num: 下一层第num类的
+    :return:
+    """
+    matrix = mat.toarray()
+    # matrix = normalize(matrix)
+
+    # 顺序输出POI所属的类别
+    class_POI = matrix.argmax(axis=1)
+
+    # 输出属于这一类的景点的列表索引值
+    index = np.where(class_POI == num)
+
+    list_poi = np.array(list_poi)
+    new_list_poi = list_poi[index[0].tolist()]
+    new_list_poi = new_list_poi.tolist()
+
+    new_X = X[index[0].tolist()]
+
+    return new_list_poi, new_X
+
+
+def prepare_subfile(k, level, node, X, U):
+    fr1 = open(node.data_dir + '\\POI_name.pickle', 'rb')
+    POI_name = pickle.load(fr1)
+
+    # 循环创建下一层文件夹，并且准备下一层所需要的所有初始矩阵，最后一层不创建下一层文件夹
+    for child in range(k):
+        child_path = os.path.join(node.nodeSelf, str(child))
+        child_node = Node(child_path)
+        # 创建下一层文件夹
+        create_node_dir(child_node, k)
+        # 拷贝不需要修改的文件（例如景点字典）
+        copy_file(os.path.join(node.data_dir), os.path.join(child_node.data_dir), flag_U, flag_V, level)
+        # 生成下一层需要的文件（如约束矩阵，新的X，以及新的景点列表）
+        new_POI_name, new_X = classify(U, POI_name, X, child)
+
+        list_file = open(child_node.data_dir + '\\POI_name.pickle', 'wb')
+        pickle.dump(new_POI_name, list_file)
+        list_file.close()
+
+        sp.save_npz(child_node.data_dir + '\\POI_matrix.npz', new_X, True)
+
+
 def recursion(k, level, flag_U, flag_V, node, visual_type):
+    """
+    递归函数，重点
+    :param k: the number of cluster
+    :param level: the level of current node
+    :param flag_U: the constraint of U: False for not using constraint and True for the opposite.
+    :param flag_V: the constraint of V: False for not using constraint and True for the opposite.
+    :param node: 当前节点的对象
+    :param visual_type:
+    :return:
+    """
     if level > MAX_LEVEL:
         return
 
@@ -141,19 +201,16 @@ def recursion(k, level, flag_U, flag_V, node, visual_type):
           ' ==========================')
     start = time.time()
     W_u, D_u, W_v, D_v, U, H, V, X = prepare_matrix(k, node, flag_U, flag_V)
+
     end = time.time()
     print('[Main] Done reading the full data using time %s seconds' % (end - start))
 
     U, H, V = nmf.NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, flag_U, flag_V, node, visual_type)
 
-    # 循环创建下一层文件夹，并且准备下一层所需要的所有初始矩阵
-    for child in range(k):
-        child_path = os.path.join(node.nodeSelf, str(child))
-        child_node = Node(child_path)
-        # 最后一层不创建下一层文件夹
-        if level <= MAX_LEVEL - 1:
-            create_node_dir(child_node, k)
-            copy_file(os.path.join(node.data_dir), os.path.join(child_node.data_dir), flag_U, flag_V, level)
+
+    # 循环创建下一层文件夹，并且准备下一层所需要的所有初始矩阵，最后一层不创建下一层文件夹
+    if level <= MAX_LEVEL - 1:
+        prepare_subfile(k, level, node, X, U)
 
     # 递归进入下一层
     for child in range(k):

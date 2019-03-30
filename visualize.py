@@ -38,8 +38,8 @@ def visualize(U, V, loss_matrix, node, step, visual_type):
         X_U = pca.fit_transform(X_U)
         X_V = pca.fit_transform(X_V)
     else:
-        X_U_reduce = np.sum(X_U, 0)
-        X_V_reduce = np.sum(X_V, 0)
+        X_U_reduce = np.nansum(X_U, 0)
+        X_V_reduce = np.nansum(X_V, 0)
 
         X_U_red_sma = map(X_U_reduce.tolist().index, heapq.nsmallest(len(X_U_reduce) - 3, X_U_reduce))
         X_V_red_sma = map(X_V_reduce.tolist().index, heapq.nsmallest(len(X_V_reduce) - 3, X_V_reduce))

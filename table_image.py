@@ -133,6 +133,16 @@ def class_list_pre(class_num):
 
 
 def sort_and_top(mat, n, POI_name_dic, POI_name, POI_dic, type):
+    """
+    输出每一类的列表以及最靠中心的n个景点
+    :param mat: 输入矩阵
+    :param n: 需要输出的前多少个
+    :param POI_name_dic: 景点与其poiid的字典
+    :param POI_name: 景点按矩阵顺序的列表
+    :param POI_dic: 词按矩阵顺序的列表
+    :param type: 判断输入矩阵是景点矩阵（0）还是词矩阵（1）
+    :return:
+    """
     matrix = mat.toarray()
     matrix = normalize(matrix)
     class_num = len(matrix[0])
