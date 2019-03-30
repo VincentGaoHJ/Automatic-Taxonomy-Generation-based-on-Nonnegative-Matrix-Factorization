@@ -21,7 +21,7 @@ def normalize(data):
     return data
 
 
-def visualize(U, V, loss_matrix, folder, step, visual_type):
+def visualize(U, V, loss_matrix, node, step, visual_type):
     target_names = ["dimension-1", "dimension-2", "dimension-3"]
     feature_names = ["class-1", "class-2", "class-3"]
     figure_names = ["Loss of Matrix U", "Loss of Matrix V", "Loss of Matrix X", "Loss of Over-all"]
@@ -84,6 +84,6 @@ def visualize(U, V, loss_matrix, folder, step, visual_type):
         plt.title(figure_names[i])
         plt.legend()
 
-    file_path = os.path.join(folder, str(step + 1) + ".png")
+    file_path = os.path.join(node.image_dir, str(step + 1) + ".png")
     plt.savefig(file_path)
     plt.show()

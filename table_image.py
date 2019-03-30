@@ -183,12 +183,12 @@ def sort_and_top(mat, n, POI_name_dic, POI_name, POI_dic, type):
     return class_list, poi_std_min
 
 
-def create_table(U, V, folder_table, step):
-    fr1 = open('POI_name_dic.pickle', 'rb')
+def create_table(U, V, node, step):
+    fr1 = open(node.data_dir + '\\POI_name_dic.pickle', 'rb')
     POI_name_dic = pickle.load(fr1)
-    fr2 = open('POI_name.pickle', 'rb')
+    fr2 = open(node.data_dir + '\\POI_name.pickle', 'rb')
     POI_name = pickle.load(fr2)
-    fr3 = open('POI_dic.pickle', 'rb')
+    fr3 = open(node.data_dir + '\\POI_dic.pickle', 'rb')
     POI_dic = pickle.load(fr3)
 
     n = 20
@@ -217,7 +217,7 @@ def create_table(U, V, folder_table, step):
 
     table_title = "非负矩阵分解"
 
-    file_path = os.path.join(folder_table, str(step + 1) + ".png")
+    file_path = os.path.join(node.table_dir, str(step + 1) + ".png")
 
     create_table_img(data, file_path, font='C:\Windows\Fonts\simkai.ttf', describe=describe,
                      table_title=table_title)

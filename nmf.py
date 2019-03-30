@@ -70,16 +70,14 @@ def update(I, me, de):
     return I
 
 
-def save_model(U, V, folder_model, step):
-    path_U = os.path.join(folder_model, str(step) + "_U_sp.npz")
-    path_V = os.path.join(folder_model, str(step) + "_V_sp.npz")
+def save_model(U, V, node, step):
+    path_U = os.path.join(node.model_dir, str(step) + "_U_sp.npz")
+    path_V = os.path.join(node.model_dir, str(step) + "_V_sp.npz")
     sp.save_npz(path_U, U, True)
     sp.save_npz(path_V, V, True)
 
 
-def NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, flag_U, flag_V, folder_image, folder_model, folder_table, visual_type,
-           steps=1000,
-           lamda_u=0.1, lamda_v=0.001):
+def NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, flag_U, flag_V, node, visual_type, steps=10, lamda_u=0.1, lamda_v=0.001):
     loss_matrix = None
 
     for step in range(steps):
@@ -121,13 +119,13 @@ def NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, flag_U, flag_V, folder_image, folder_
         # visualize
         if step % 10 == 1:
             print("[NMF]Visualize the table")
-            create_table(U, V, folder_table, step)
+            create_table(U, V, node, step)
             print("[NMF]Visualize the image")
-            visualize(U, V, loss_matrix, folder_image, step, visual_type)
+            visualize(U, V, loss_matrix, node, step, visual_type)
 
         # save model
         if step % 100 == 1:
             print("[NMF]Save Model")
-            save_model(U, V, folder_model, step)
+            save_model(U, V, node, step)
 
     return U, H, V
