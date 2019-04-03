@@ -10,38 +10,15 @@ import pickle
 import numpy as np
 
 
-def classify():
+def recursion(k, level, flag_U, flag_V, node, visual_type):
     """
-    输出属于下一层第num类的新X以及新景点的list
-    :param mat: 这一层景点的概率矩阵
-    :param list_poi: 这一层景点的list
-    :param X: 这一层的X
-    :param num: 下一层第num类的
+
+    :param k:
+    :param level:
+    :param flag_U:
+    :param flag_V:
+    :param node:
+    :param visual_type:
     :return:
     """
-    matrix = np.array([[1, 2], [2, 1]])
-    # matrix = normalize(matrix)
-
-    list_poi = np.array(["sdfin", "2"])
-
-    X = np.array([[1, 2, 2, 2, 2], [2, 1, 2, 2, 2]])
-
-    # 顺序输出POI所属的类别
-    class_POI = matrix.argmax(axis=1)
-
-    # 输出属于这一类的景点的列表索引值
-    index = np.where(class_POI == 1)
-
-    print(type(index[0].tolist()))
-    print(index[0].tolist())
-
-    new_list_poi = list_poi[index[0].tolist()]
-
-    new_X = X[index[0]]
-
-    return new_list_poi, new_X
-
-
-new_list_poi, new_X = classify()
-
-print(new_list_poi, new_X)
+    pass
