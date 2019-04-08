@@ -9,6 +9,7 @@ import os
 import numpy as np
 import scipy.sparse as sp
 from visualize import visualize
+from paras import load_init_params
 from table_image import create_table
 
 
@@ -36,14 +37,14 @@ def select_rows_from_csr_mtx(csr_mtx, row_head_indices, row_tail_indices):
 
 
 def loss(X, U, H, V, D_u, D_v, W_u, W_v, flag_U, flag_V, lamda_u, lamda_v):
-    print("[loss]Part1")
+    # print("[loss]Part1")
     i = 0
     sta1 = 0
     batch = 4000
     n = U.shape[0]
 
     while (i < n - 1):
-        print("[loss]Part1 finish:", i)
+        # print("[loss]Part1 finish:", i)
         if i + batch < n - 1:
             Part1 = select_rows_from_csr_mtx(X, i, i + batch - 1) - \
                     select_rows_from_csr_mtx(U, i, i + batch - 1) * H * V.T
@@ -58,25 +59,36 @@ def loss(X, U, H, V, D_u, D_v, W_u, W_v, flag_U, flag_V, lamda_u, lamda_v):
 
     sta3 = 0
     if flag_U:
-        print("[loss]Part3")
+        # print("[loss]Part3")
         Part3 = U.T * (D_u - W_u) * U
         sta3 = lamda_u * np.trace(Part3.toarray())
 
     sta5 = 0
     if flag_V:
-        print("[loss]Part5")
+        # print("[loss]Part5")
         Part5 = V.T * (D_v - W_v) * V
         sta5 = lamda_v * np.trace(Part5.toarray())
-
-    print("[loss]Results: ", sta1 + sta3 + sta5, sta1, sta3, sta5)
 
     return [sta3, sta5, sta1, sta1 + sta3 + sta5]
 
 
 def update(I, me, de):
     mul = sp.csr_matrix(me / de)
-    I = sp.csr_matrix.multiply(I, sp.csr_matrix.sqrt(mul))
+    mul = has_nan(mul)
+    mul_sqrt = sp.csr_matrix.sqrt(mul)
+    I = sp.csr_matrix.multiply(I, mul_sqrt)
     return I
+
+
+def normalize(csr_matrix):
+    matrix = csr_matrix.toarray()
+    sum_matrix = np.sum(matrix, axis=1)
+    for i in range(len(sum_matrix)):
+        matrix[i] = matrix[i] / sum_matrix[i]
+
+    csr_matrix = sp.csr_matrix(matrix)
+
+    return csr_matrix
 
 
 def save_model(U, V, node, step):
@@ -86,18 +98,35 @@ def save_model(U, V, node, step):
     sp.save_npz(path_V, V, True)
 
 
-def NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, flag_U, flag_V, node, visual_type, steps=1000, lamda_u=0.1, lamda_v=0.001):
+def has_nan(x):
+    test = x != x
+    if np.sum(test) > 0:
+        print(test)
+        print("出现Nan值：", np.sum(test))
+        x_mat = x.todense()
+        x_mat = np.nan_to_num(x_mat)
+        x = sp.csr_matrix(x_mat)
+    return x
+
+
+def NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, flag_U, flag_V, node, visual_type):
+    pd = load_init_params()
+    steps = pd["steps"]
+    lamda_u = pd["lamda_u"]
+    lamda_v = pd["lamda_v"]
     loss_matrix = None
 
     for step in range(steps):
+        print("[{step}/{steps} NMF]Update matrices".format(step=step, steps=steps))
         # Update matrix H
-        print("[NMF]Update matrix H")
+        # print("[NMF]Update matrix H")
         me = U.T * (X * V)
         de = U.T * U * H * V.T * V
+
         H = update(H, me, de)
 
         # Update matrix U
-        print("[NMF]Update matrix U")
+        # print("[NMF]Update matrix U")
         if flag_U:
             me = X * V * H.T + lamda_u * W_u * U
             de = U * H * (V.T * V) * H.T + lamda_u * D_u * U
@@ -107,7 +136,7 @@ def NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, flag_U, flag_V, node, visual_type, st
         U = update(U, me, de)
 
         # Update matrix V
-        print("[NMF]Update matrix V")
+        # print("[NMF]Update matrix V")
         if flag_V:
             me = X.T * U * H + lamda_v * W_v * V
             de = V * H.T * (U.T * U) * H + lamda_v * D_v * V
@@ -117,24 +146,25 @@ def NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, flag_U, flag_V, node, visual_type, st
         V = update(V, me, de)
 
         # loss
-        print("[NMF]Counting loss")
+        # print("[NMF]Counting loss")
         row = loss(X, U, H, V, D_u, D_v, W_u, W_v, flag_U, flag_V, lamda_u, lamda_v)
         row = np.array(row, dtype=float)
+        print("[{step}/{steps} loss]Results: ".format(step=step, steps=steps), row[0], row[1], row[2], row[3])
         if loss_matrix is not None:
             loss_matrix = np.row_stack((loss_matrix, row))
         else:
             loss_matrix = row
 
         # visualize
-        if step % 10 == 1:
-            print("[NMF]Visualize the table")
+        if step % 100 == 1:
+            print("[{step}/{steps} NMF]Visualize the table".format(step=step, steps=steps))
             create_table(U, V, node, step)
-            print("[NMF]Visualize the image")
+            print("[{step}/{steps} NMF]Visualize the image".format(step=step, steps=steps))
             visualize(U, V, loss_matrix, node, step, visual_type)
 
         # save model
         if step % 100 == 1:
-            print("[NMF]Save Model")
+            print("[{step}/{steps} NMF]Save Model".format(step=step, steps=steps))
             save_model(U, V, node, step)
 
     return U, H, V

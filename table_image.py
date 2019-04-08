@@ -8,6 +8,7 @@ Created on 2019/3/23
 import os
 import pickle
 import numpy as np
+from paras import load_init_params
 from prettytable import PrettyTable
 from PIL import Image, ImageDraw, ImageFont
 
@@ -132,12 +133,11 @@ def class_list_pre(class_num):
     return prepare_list
 
 
-def sort_and_top(mat, n, POI_name_dic, POI_name, POI_dic, type):
+def sort_and_top(mat, n, POI_name, POI_dic, type):
     """
     输出每一类的列表以及最靠中心的n个景点
     :param mat: 输入矩阵
     :param n: 需要输出的前多少个
-    :param POI_name_dic: 景点与其poiid的字典
     :param POI_name: 景点按矩阵顺序的列表
     :param POI_dic: 词按矩阵顺序的列表
     :param type: 判断输入矩阵是景点矩阵（0）还是词矩阵（1）
@@ -165,7 +165,7 @@ def sort_and_top(mat, n, POI_name_dic, POI_name, POI_dic, type):
                 poi_prob[poi_prob.index(max(poi_prob))] = -1
 
         if type == 0:
-            class_list['class_' + str(i)] = list(POI_name_dic[POI_name[k]] for k in re1 if class_POI[k] == i)
+            class_list['class_' + str(i)] = list(POI_name[k] for k in re1 if class_POI[k] == i)
         elif type == 1:
             class_list['class_' + str(i)] = list(POI_dic[k] for k in re1 if class_POI[k] == i)
 
@@ -185,7 +185,7 @@ def sort_and_top(mat, n, POI_name_dic, POI_name, POI_dic, type):
 
     poi_std_min = []
     if type == 0:
-        poi_std_min = list(POI_name_dic[POI_name[k]] for k in re2)
+        poi_std_min = list(POI_name[k] for k in re2)
     elif type == 1:
         poi_std_min = list(POI_dic[k] for k in re2)
     poi_std_min += ["" for i in range(n - len(poi_std_min))]
@@ -194,19 +194,18 @@ def sort_and_top(mat, n, POI_name_dic, POI_name, POI_dic, type):
 
 
 def create_table(U, V, node, step):
-    fr1 = open(node.data_dir + '\\POI_name_dic.pickle', 'rb')
-    POI_name_dic = pickle.load(fr1)
-    fr2 = open(node.data_dir + '\\POI_name.pickle', 'rb')
-    POI_name = pickle.load(fr2)
-    fr3 = open(node.data_dir + '\\POI_dic.pickle', 'rb')
-    POI_dic = pickle.load(fr3)
+    pd = load_init_params()
+    fr1 = open(node.data_dir + '\\' + pd["list_poi"], 'rb')
+    POI_name = pickle.load(fr1)
+    fr2 = open(node.data_dir + '\\' + pd["list_word"], 'rb')
+    POI_dic = pickle.load(fr2)
 
     n = 20
 
     class_num = U.shape[1]
 
-    class_list_U, poi_std_min_U = sort_and_top(U, n, POI_name_dic, POI_name, POI_dic, type=0)
-    class_list_V, poi_std_min_V = sort_and_top(V, n, POI_name_dic, POI_name, POI_dic, type=1)
+    class_list_U, poi_std_min_U = sort_and_top(U, n, POI_name, POI_dic, type=0)
+    class_list_V, poi_std_min_V = sort_and_top(V, n, POI_name, POI_dic, type=1)
 
     data = []
     for i in range(class_num):

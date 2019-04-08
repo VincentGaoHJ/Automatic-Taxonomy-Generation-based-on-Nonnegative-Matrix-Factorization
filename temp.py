@@ -4,21 +4,35 @@ Created on Wed Jan 30 14:14:53 2019
 
 @author: Haojun Gao
 """
-import shutil
-import os
-import pickle
+
 import numpy as np
+import pickle
+import scipy.sparse as sp
+
+import sys
+import os
 
 
-def recursion(k, level, flag_U, flag_V, node, visual_type):
-    """
+class Logger(object):
+    def __init__(self, filename="Default.log"):
+        self.terminal = sys.stdout
+        self.log = open(filename, "a")
 
-    :param k:
-    :param level:
-    :param flag_U:
-    :param flag_V:
-    :param node:
-    :param visual_type:
-    :return:
-    """
-    pass
+    def write(self, message):
+        self.terminal.write(message)
+        self.log.write(message)
+
+    def flush(self):
+        pass
+
+
+path = os.path.abspath(os.path.dirname(__file__))
+type = sys.getfilesystemencoding()
+sys.stdout = Logger('a.txt')
+print(path)
+print(os.path.dirname(__file__))
+print('------------------')
+
+doc = open("out.txt", 'w')
+
+print("txt", file=doc)
