@@ -10,13 +10,14 @@ import nmf
 import time
 import shutil
 import pickle
+import pandas
 import datetime
 import numpy as np
 import scipy.sparse as sp
 from NextPOI import next_poi
 from paras import load_init_params
 
-MAX_LEVEL = 2
+MAX_LEVEL = 4
 
 
 class Node:
@@ -83,7 +84,14 @@ def pre_check_min(mat, k):
     return flag
 
 
-def create_node_dir(node, level, k):
+def normalize(data):
+    for i in range(len(data)):
+        m = np.sum(data[i])
+        data[i] /= m
+    return data
+
+
+def create_node_dir(node):
     """
     获取当前目录并创建保存文件夹
     倒数第二层创建最后一层的时候不创建0 - 4子文件夹，因为最后一层不需要下一层
@@ -98,12 +106,6 @@ def create_node_dir(node, level, k):
     os.makedirs(node.model_dir)
     os.makedirs(node.table_dir)
     os.makedirs(node.result_dir)
-
-    # 倒数第二层创建最后一层的时候不创建0 - 4子文件夹，因为最后一层不需要下一层
-    if level < MAX_LEVEL - 1:
-        for child in range(k):
-            child_path = os.path.join(node.nodeSelf, str(child))
-            os.makedirs(child_path)
 
 
 def copy_file(source_dir, target_dir, flag_U, flag_V, level):
@@ -210,45 +212,164 @@ def classify(node, mat, list_poi, num):
     return new_list_poi, new_X, new_list_word, new_comment_data
 
 
-def prepare_subfile(k, level, node, U):
+def write_results(k, level, node, U):
     fr1 = open(node.data_dir + '\\' + pd['list_poi'], 'rb')
     POI_name = pickle.load(fr1)
 
-    # 循环创建下一层文件夹，并且准备下一层所需要的所有初始矩阵
-    # 倒数第二层创建最后一层的时候不创建0-4子文件夹，因为最后一层不需要下一层
-    # 最后一层不创建下一层文件夹（进不来这个函数）
+    # 将这层的结果写进这层的result文件夹中
+    # 循环创建下一层文件夹（如果需要创建），并且准备下一层所需要的所有初始矩阵
     for i in range(k):
-        child_path = os.path.join(node.nodeSelf, str(i))
-        child_node = Node(child_path)
-        # 创建下一层文件夹
-        # 倒数第二层创建最后一层的时候不创建0-4子文件夹，因为最后一层不需要下一层
-        create_node_dir(child_node, level, k)
-        # 拷贝不需要修改的文件（例如景点字典）
-        copy_file(os.path.join(node.data_dir), os.path.join(child_node.data_dir), flag_U, flag_V, level)
-        # 生成下一层需要的文件（如约束矩阵，新的X，以及新的景点列表以及新的词列表，还有新的评论文件）
-        new_list_poi, new_X, new_list_word, new_comment_data = classify(node, U, POI_name, i)
+        # 将这层的结果写进这层的result文件夹中
+        matrix = U.toarray()
+        matrix = normalize(matrix)
 
-        # 写入新的本类poi的评论文件
-        with open(child_node.data_dir + '\\' + pd['POI_comment'], 'w') as f:
-            for line in new_comment_data:
-                f.write(line)
-                f.write('\n')
+        # 顺序输出POI所属的类别
+        class_POI = matrix.argmax(axis=1)
 
-        # 写入新的景点列表
-        list_file = open(child_node.data_dir + '\\' + pd['list_poi'], 'wb')
-        pickle.dump(new_list_poi, list_file)
-        list_file.close()
+        # 输出属于这一类的景点的列表索引值
+        index = np.where(class_POI == i)
+        index_list = index[0].tolist()
 
-        # 写入新的词列表
-        list_file = open(child_node.data_dir + '\\' + pd['list_word'], 'wb')
-        pickle.dump(new_list_word, list_file)
-        list_file.close()
+        # 生成新的景点的list
+        list_poi = np.array(POI_name)
+        new_poi = list_poi[index_list]
+        new_list_poi = new_poi.tolist()
 
-        # 写入新的X矩阵
-        sp.save_npz(child_node.data_dir + '\\' + pd['matrix_X'], new_X, True)
+        # 生成新的景点属于这一类的概率的list
+        proba_poi = matrix[index_list, i]
+        proba_poi = proba_poi.tolist()
+
+        pd_name = pandas.DataFrame(new_list_poi, columns=['poi_name'])
+        pd_porb = pandas.DataFrame(proba_poi, columns=['poi_porb'])
+
+        pd_save = pandas.concat([pd_name, pd_porb], axis=1)
+
+        pd_save.to_csv(node.result_dir + '\\' + str(i) + '.csv', encoding='utf_8_sig')
+
+        # 判断这一层新的poi数量是否大于阈值，如果大于，则需要创建下一层文件夹，如果小于则不需要
+        if pd_save.shape[0] > 80:
+
+            child_path = os.path.join(node.nodeSelf, str(i))
+            os.makedirs(child_path)
+
+            child_node = Node(child_path)
+
+            # 创建下一层文件夹
+            create_node_dir(child_node)
+
+            # 生成下一层需要的文件（如约束矩阵，新的X，以及新的景点列表以及新的词列表，还有新的评论文件）
+            new_list_poi, new_X, new_list_word, new_comment_data = classify(node, U, POI_name, i)
+
+            # 拷贝不需要修改的文件（例如景点字典）
+            copy_file(os.path.join(node.data_dir), os.path.join(child_node.data_dir), flag_U, flag_V, level)
+
+            # 写入新的本类poi的评论文件
+            with open(child_node.data_dir + '\\' + pd['POI_comment'], 'w') as f:
+                for line in new_comment_data:
+                    f.write(line)
+                    f.write('\n')
+
+            # 写入新的景点列表
+            list_file = open(child_node.data_dir + '\\' + pd['list_poi'], 'wb')
+            pickle.dump(new_list_poi, list_file)
+            list_file.close()
+
+            # 写入新的词列表
+            list_file = open(child_node.data_dir + '\\' + pd['list_word'], 'wb')
+            pickle.dump(new_list_word, list_file)
+            list_file.close()
+
+            # 写入新的X矩阵
+            sp.save_npz(child_node.data_dir + '\\' + pd['matrix_X'], new_X, True)
 
 
-def recursion(k, level, flag_U, flag_V, node, visual_type):
+# 有多少个类就准备多少个list
+def class_list_pre(class_num):
+    prepare_list = locals()
+    for i in range(class_num):
+        prepare_list['class_' + str(i)] = []
+    return prepare_list
+
+
+def purification_prepare(mat):
+    """
+    输出所有景点中那些噪音景点（其属于每一类的概率都不大于某个阈值）
+    :param mat: 输入矩阵
+    :return:
+        delete_list: 要删除的景点的下标的列表
+    """
+    matrix = mat.toarray()
+    matrix = normalize(matrix)
+
+    prob = 0.4
+
+    poi_max = np.max(matrix, axis=1).tolist()
+
+    delete_list = []
+    while 1:
+        b = min(poi_max)
+        if b >= prob:
+            break
+        else:
+            delete_list.append(poi_max.index(b))
+            poi_max[poi_max.index(b)] = 2
+
+    return delete_list
+
+
+def purification(node, delete_list):
+    """
+    根据要删除的列表生成新的评论文本，新的矩阵X，以及新的景点列表和词列表
+    用新的新的评论文本，新的矩阵X，以及新的景点列表和词列表生成本层的初始文件
+    """
+
+    # 打开删除前的评论文本
+    with open(node.data_dir + '\\' + pd['POI_comment'], 'r') as f:
+        comment_data = f.read().split('\n')
+        del comment_data[-1]
+
+    # 读入删除前景点的中文list
+    fr1 = open(node.data_dir + '\\' + pd['list_poi'], 'rb')
+    list_poi = pickle.load(fr1)
+
+    delete_list_name = list(list_poi[k] for k in delete_list)
+
+    print('[Main] 删除的噪点为：')
+    print(delete_list_name)
+
+    index_list = list(range(len(list_poi)))
+
+    index_list = [item for item in index_list if item not in delete_list]
+
+    # 生成新的景点的中文的list
+    list_poi = np.array(list_poi)
+    new_list_poi = list_poi[index_list]
+    new_list_poi = new_list_poi.tolist()
+
+    # 生成新的X矩阵，词的list以及新的评论文件
+    new_X, new_list_word, new_comment_data = next_poi(index_list, comment_data)
+
+    # 写入本层新的本类poi的评论文件
+    with open(node.data_dir + '\\' + pd['POI_comment'], 'w') as f:
+        for line in new_comment_data:
+            f.write(line)
+            f.write('\n')
+
+    # 写入本层新的景点列表
+    list_file = open(node.data_dir + '\\' + pd['list_poi'], 'wb')
+    pickle.dump(new_list_poi, list_file)
+    list_file.close()
+
+    # 写入本层新的词列表
+    list_file = open(node.data_dir + '\\' + pd['list_word'], 'wb')
+    pickle.dump(new_list_word, list_file)
+    list_file.close()
+
+    # 写入本层新的X矩阵
+    sp.save_npz(node.data_dir + '\\' + pd['matrix_X'], new_X, True)
+
+
+def recursion(k, level, flag_U, flag_V, node, visual_type, purify_type):
     """
     递归函数，重点
     :param k: the number of cluster
@@ -266,6 +387,11 @@ def recursion(k, level, flag_U, flag_V, node, visual_type):
           ' ==========================')
     start = time.time()
     W_u, D_u, W_v, D_v, U, H, V, X = prepare_matrix(k, node, flag_U, flag_V)
+    print('[Main] 构建初始矩阵完成')
+
+    # 如果待聚类的POI数量少于一百，则不进行聚类
+    if X.shape[0] < 80:
+        return
 
     # 检查这个文件夹下面的矩阵和矩阵相关的两个list的行数和列数是否匹配
     if not pre_check_match(X, node):
@@ -279,20 +405,39 @@ def recursion(k, level, flag_U, flag_V, node, visual_type):
     end = time.time()
     print('[Main] Done reading the full data using time %s seconds' % (end - start))
 
-    U, H, V = nmf.NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, flag_U, flag_V, node, visual_type)
+    if purify_type == 0:
+        U, H, V = nmf.NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, flag_U, flag_V, node, visual_type)
 
-    # 循环创建下一层文件夹，并且准备下一层所需要的所有初始矩阵，最后一层不创建下一层文件夹
+    elif purify_type == 1:
+        while 1:
+            U, H, V = nmf.NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, flag_U, flag_V, node, visual_type)
+            delete_list = purification_prepare(U)
+            if len(delete_list) == 0:
+                print(print('[Main] 无需迭代更新本层的初始文件'))
+                break
+            print('[Main] 准备删除{}个噪点景点并更新本层的初始文件'.format(len(delete_list)))
+            # 更新本层data中的初始文件
+            purification(node, delete_list)
+            print('[Main] 更新本层的初始文件完成')
+            # 重新读入本层data中的初始文件并生成初始矩阵
+            W_u, D_u, W_v, D_v, U, H, V, X = prepare_matrix(k, node, flag_U, flag_V)
+            print('[Main] 重新构建初始矩阵完成')
+
+    # 将这层的结果写进这层的result文件夹中，然后根据需要创建下一层的文件
+    # 如果结果中的第n类中的数量大于阈值，并且不是倒数第一层，则需要创建下一层文件夹
+    # 循环创建下一层文件夹，并且准备下一层所需要的所有初始矩阵
     if level <= MAX_LEVEL - 1:
-        prepare_subfile(k, level, node, U)
+        write_results(k, level, node, U)
 
     # 递归进入下一层
     for child in range(k):
         child_path = os.path.join(node.nodeSelf, str(child))
-        child_node = Node(child_path)
-        recursion(k, level + 1, flag_U, flag_V, child_node, visual_type)
+        if os.path.exists(child_path):
+            child_node = Node(child_path)
+            recursion(k, level + 1, flag_U, flag_V, child_node, visual_type, purify_type)
 
 
-def main(k, visual_type, flag_U, flag_V):
+def main(k, visual_type, purify_type, flag_U, flag_V):
     """
     主函数，配置准备文件并进入递归
     :param k: the number of cluster
@@ -306,12 +451,12 @@ def main(k, visual_type, flag_U, flag_V):
 
     # 创建根节点以及本次实验根文件夹
     node = create_dir()
-    create_node_dir(node, level, k)
+    create_node_dir(node)
 
     # 将数据拷贝到本次实验文件夹中
     copy_file("./data", node.data_dir, flag_U, flag_V, level)
 
-    recursion(k, level, flag_U, flag_V, node, visual_type)
+    recursion(k, level, flag_U, flag_V, node, visual_type, purify_type)
 
 
 if __name__ == "__main__":
@@ -323,8 +468,11 @@ if __name__ == "__main__":
     # Initialize type of visualization: 0 for PCA and 1 for choosing the important.
     visual_type = pd['visual_type']
 
+    # Initialize type of visualization: 0 for PCA and 1 for choosing the important.
+    purify_type = pd['purify_type']
+
     # Initialize the constraint: False for not using constraint and True for the opposite.
     flag_U = False
     flag_V = False
 
-    main(k, visual_type, flag_U, flag_V)
+    main(k, visual_type, purify_type, flag_U, flag_V)
