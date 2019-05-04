@@ -6,11 +6,13 @@ Created on Wed Jan 30 14:14:53 2019
 """
 
 import os
+import time
 import numpy as np
 import scipy.sparse as sp
 from visualize import visualize
 from paras import load_init_params
 from table_image import create_table
+from progress_bar import ProgressBar
 
 
 def select_rows_from_csr_mtx(csr_mtx, row_head_indices, row_tail_indices):
@@ -116,8 +118,15 @@ def NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, flag_U, flag_V, node, visual_type):
     lamda_v = pd["lamda_v"]
     loss_matrix = None
 
+    # 设置可视化进度条
+    bar = ProgressBar(steps)
+    print("The step numbers of iteration is {}".format(steps))
     for step in range(steps):
-        print("[{step}/{steps} NMF]Update matrices".format(step=step, steps=steps))
+        bar.update(step)
+        time.sleep(1)
+    for step in range(steps):
+        bar.update(step)
+        # print("[{step}/{steps} NMF]Update matrices".format(step=step, steps=steps))
         # Update matrix H
         # print("[NMF]Update matrix H")
         me = U.T * (X * V)
@@ -149,22 +158,23 @@ def NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, flag_U, flag_V, node, visual_type):
         # print("[NMF]Counting loss")
         row = loss(X, U, H, V, D_u, D_v, W_u, W_v, flag_U, flag_V, lamda_u, lamda_v)
         row = np.array(row, dtype=float)
-        print("[{step}/{steps} loss]Results: ".format(step=step, steps=steps), row[0], row[1], row[2], row[3])
+        # print("[{step}/{steps} loss]Results: ".format(step=step, steps=steps), row[0], row[1], row[2], row[3])
         if loss_matrix is not None:
             loss_matrix = np.row_stack((loss_matrix, row))
         else:
             loss_matrix = row
 
         # visualize
+        V_convert = V * H.T  # （AB）转置 =B 转置 * A 转置
         if step % 100 == 1:
-            print("[{step}/{steps} NMF]Visualize the table".format(step=step, steps=steps))
-            create_table(U, V, node, step)
-            print("[{step}/{steps} NMF]Visualize the image".format(step=step, steps=steps))
-            visualize(U, V, loss_matrix, node, step, visual_type)
+            # print("[{step}/{steps} NMF]Visualize the table".format(step=step, steps=steps))
+            create_table(U, V_convert, node, step)
+            # print("[{step}/{steps} NMF]Visualize the image".format(step=step, steps=steps))
+            visualize(U, V_convert, loss_matrix, node, step, visual_type)
 
         # save model
         if step % 100 == 1:
-            print("[{step}/{steps} NMF]Save Model".format(step=step, steps=steps))
-            save_model(U, V, node, step)
+            # print("[{step}/{steps} NMF]Save Model".format(step=step, steps=steps))
+            save_model(U, V_convert, node, step)
 
     return U, H, V

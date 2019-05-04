@@ -193,7 +193,7 @@ def sort_and_top(mat, n, POI_name, POI_dic, type):
     return class_list, poi_std_min
 
 
-def create_table(U, V, node, step):
+def create_table(U, V_convert, node, step):
     pd = load_init_params()
     fr1 = open(node.data_dir + '\\' + pd["list_poi"], 'rb')
     POI_name = pickle.load(fr1)
@@ -204,8 +204,9 @@ def create_table(U, V, node, step):
 
     class_num = U.shape[1]
 
+    # 将 H * V 作为词的概率矩阵，相当于对 V 矩阵做一次空间中的线性变换
     class_list_U, poi_std_min_U = sort_and_top(U, n, POI_name, POI_dic, type=0)
-    class_list_V, poi_std_min_V = sort_and_top(V, n, POI_name, POI_dic, type=1)
+    class_list_V, poi_std_min_V = sort_and_top(V_convert, n, POI_name, POI_dic, type=1)
 
     data = []
     for i in range(class_num):

@@ -21,14 +21,14 @@ def normalize(data):
     return data
 
 
-def visualize(U, V, loss_matrix, node, step, visual_type):
+def visualize(U, V_convert, loss_matrix, node, step, visual_type):
     target_names = ["dimension-1", "dimension-2", "dimension-3"]
     feature_names = ["class-1", "class-2", "class-3"]
     figure_names = ["Loss of Matrix U", "Loss of Matrix V", "Loss of Matrix X", "Loss of Over-all"]
     label_names = ["Matrix U", "Matrix V", "Matrix X", "Over-all"]
 
     X_U = U.toarray()
-    X_V = V.toarray()
+    X_V = V_convert.toarray()
 
     X_U = normalize(X_U)
     X_V = normalize(X_V)

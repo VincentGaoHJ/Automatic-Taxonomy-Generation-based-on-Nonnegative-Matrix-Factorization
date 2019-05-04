@@ -22,7 +22,7 @@ def load_init_params():
     # Initialize the number of cluster
     pd['num_cluster'] = 5
 
-    pd['steps'] = 300
+    pd['steps'] = 506
     pd['lamda_u'] = 0.1
     pd['lamda_v'] = 0.1
 
@@ -33,7 +33,8 @@ def load_init_params():
     # 0 for not to delete noise
     # 1 for deleting noise during this layer training until there is no noise
     # 2 for deleting noise when preparing the next level
-    pd['purify_type'] = 1
+    pd['purify_type'] = 0
+    pd['purify_prob'] = 0.4
 
     pd['matrix_X'] = "buchai_POI_matrix.npz"
     pd['list_poi'] = "buchai_POI_name1.pickle"

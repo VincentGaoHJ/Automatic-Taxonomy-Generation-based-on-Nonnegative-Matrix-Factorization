@@ -212,14 +212,44 @@ def classify(node, mat, list_poi, num):
     return new_list_poi, new_X, new_list_word, new_comment_data
 
 
-def write_results(k, level, node, U):
+def write_results(k, level, node, U, V_convert):
     fr1 = open(node.data_dir + '\\' + pd['list_poi'], 'rb')
     POI_name = pickle.load(fr1)
+    fr2 = open(node.data_dir + '\\' + pd["list_word"], 'rb')
+    POI_dic = pickle.load(fr2)
 
-    # 将这层的结果写进这层的result文件夹中
+    # 将这层的词语聚类结果写进这层的result文件夹中
+    for i in range(k):
+        matrix = V_convert.toarray()
+        matrix = normalize(matrix)
+
+        # 顺序输出每个word所属的类别
+        class_word = matrix.argmax(axis=1)
+
+        # 输出属于这一类的word的列表索引值
+        index = np.where(class_word == i)
+        index_list = index[0].tolist()
+
+        # 生成新的word的list
+        list_word = np.array(POI_dic)
+        new_word = list_word[index_list]
+        new_word_list = new_word.tolist()
+
+        # 生成新的景点属于这一类的概率的list
+        proba_word = matrix[index_list, i]
+        proba_word = proba_word.tolist()
+
+        pd_name = pandas.DataFrame(new_word_list, columns=['word_name'])
+        pd_porb = pandas.DataFrame(proba_word, columns=['word_porb'])
+
+        pd_save = pandas.concat([pd_name, pd_porb], axis=1)
+
+        pd_save.to_csv(node.result_dir + '\\' + str(i) + '-word.csv', encoding='utf_8_sig')
+
+    # 将这层的景点聚类结果写进这层的result文件夹中
     # 循环创建下一层文件夹（如果需要创建），并且准备下一层所需要的所有初始矩阵
     for i in range(k):
-        # 将这层的结果写进这层的result文件夹中
+        # 将这层的景点聚类结果写进这层的result文件夹中
         matrix = U.toarray()
         matrix = normalize(matrix)
 
@@ -244,7 +274,7 @@ def write_results(k, level, node, U):
 
         pd_save = pandas.concat([pd_name, pd_porb], axis=1)
 
-        pd_save.to_csv(node.result_dir + '\\' + str(i) + '.csv', encoding='utf_8_sig')
+        pd_save.to_csv(node.result_dir + '\\' + str(i) + '-poi.csv', encoding='utf_8_sig')
 
         # 判断这一层新的poi数量是否大于阈值，如果大于，则需要创建下一层文件夹，如果小于则不需要
         if pd_save.shape[0] > 80:
@@ -291,7 +321,7 @@ def class_list_pre(class_num):
     return prepare_list
 
 
-def purification_prepare(mat):
+def purification_prepare(mat, prob):
     """
     输出所有景点中那些噪音景点（其属于每一类的概率都不大于某个阈值）
     :param mat: 输入矩阵
@@ -301,7 +331,6 @@ def purification_prepare(mat):
     matrix = mat.toarray()
     matrix = normalize(matrix)
 
-    prob = 0.4
 
     poi_max = np.max(matrix, axis=1).tolist()
 
@@ -369,7 +398,7 @@ def purification(node, delete_list):
     sp.save_npz(node.data_dir + '\\' + pd['matrix_X'], new_X, True)
 
 
-def recursion(k, level, flag_U, flag_V, node, visual_type, purify_type):
+def recursion(k, level, flag_U, flag_V, node, visual_type, purify_type, purify_prob):
     """
     递归函数，重点
     :param k: the number of cluster
@@ -411,7 +440,7 @@ def recursion(k, level, flag_U, flag_V, node, visual_type, purify_type):
     elif purify_type == 1:
         while 1:
             U, H, V = nmf.NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, flag_U, flag_V, node, visual_type)
-            delete_list = purification_prepare(U)
+            delete_list = purification_prepare(U, purify_prob)
             if len(delete_list) == 0:
                 print(print('[Main] 无需迭代更新本层的初始文件'))
                 break
@@ -427,17 +456,18 @@ def recursion(k, level, flag_U, flag_V, node, visual_type, purify_type):
     # 如果结果中的第n类中的数量大于阈值，并且不是倒数第一层，则需要创建下一层文件夹
     # 循环创建下一层文件夹，并且准备下一层所需要的所有初始矩阵
     if level <= MAX_LEVEL - 1:
-        write_results(k, level, node, U)
+        V_convert = V * H.T
+        write_results(k, level, node, U, V_convert)
 
     # 递归进入下一层
     for child in range(k):
         child_path = os.path.join(node.nodeSelf, str(child))
         if os.path.exists(child_path):
             child_node = Node(child_path)
-            recursion(k, level + 1, flag_U, flag_V, child_node, visual_type, purify_type)
+            recursion(k, level + 1, flag_U, flag_V, child_node, visual_type, purify_type, purify_prob)
 
 
-def main(k, visual_type, purify_type, flag_U, flag_V):
+def main(k, visual_type, purify_type, flag_U, flag_V, purify_prob):
     """
     主函数，配置准备文件并进入递归
     :param k: the number of cluster
@@ -456,7 +486,9 @@ def main(k, visual_type, purify_type, flag_U, flag_V):
     # 将数据拷贝到本次实验文件夹中
     copy_file("./data", node.data_dir, flag_U, flag_V, level)
 
-    recursion(k, level, flag_U, flag_V, node, visual_type, purify_type)
+    recursion(k, level, flag_U, flag_V, node, visual_type, purify_type, purify_prob)
+
+    print(' ========================== Done running the program ==========================')
 
 
 if __name__ == "__main__":
@@ -470,9 +502,10 @@ if __name__ == "__main__":
 
     # Initialize type of visualization: 0 for PCA and 1 for choosing the important.
     purify_type = pd['purify_type']
+    purify_prob = pd['purify_prob']
 
     # Initialize the constraint: False for not using constraint and True for the opposite.
     flag_U = False
     flag_V = False
 
-    main(k, visual_type, purify_type, flag_U, flag_V)
+    main(k, visual_type, purify_type, flag_U, flag_V, purify_prob)
