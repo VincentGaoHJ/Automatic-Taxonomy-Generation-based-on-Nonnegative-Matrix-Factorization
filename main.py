@@ -15,9 +15,10 @@ import datetime
 import numpy as np
 import scipy.sparse as sp
 from NextPOI import next_poi
+from filt_entropy import Getloss
 from paras import load_init_params
 
-MAX_LEVEL = 4
+MAX_LEVEL = 6
 
 
 class Node:
@@ -277,8 +278,10 @@ def write_results(k, level, node, U, V_convert):
         pd_save.to_csv(node.result_dir + '\\' + str(i) + '-poi.csv', encoding='utf_8_sig')
 
         # 判断这一层新的poi数量是否大于阈值，如果大于，则需要创建下一层文件夹，如果小于则不需要
-        if pd_save.shape[0] > 80:
-
+        if pd_save.shape[0] <= 30:
+            print('[Main] 预剪枝判断：第 {} 类新的 poi 数量 {} 小于阈值，不继续进行聚类操作'.format(i, pd_save.shape[0]))
+        else:
+            print('[Main] 预剪枝判断：第 {} 类新的 poi 数量 {} 大于阈值，这可以继续进行聚类'.format(i, pd_save.shape[0]))
             child_path = os.path.join(node.nodeSelf, str(i))
             os.makedirs(child_path)
 
@@ -321,35 +324,59 @@ def class_list_pre(class_num):
     return prepare_list
 
 
-def purification_prepare(mat, prob):
+def purification_prepare(mat, mat_x, prob):
     """
     输出所有景点中那些噪音景点（其属于每一类的概率都不大于某个阈值）
+    在噪音景点中选择真噪音和真上级
+    输出两个列表，一个是该删除的，一个是该上推的
     :param mat: 输入矩阵
+    :param mat_x: 原始X矩阵
     :return:
         delete_list: 要删除的景点的下标的列表
+        superior_list: 属于上级的景点的下标的列表
     """
+    print("开始筛选了")
     matrix = mat.toarray()
+    matrix_x = mat_x.toarray()
     matrix = normalize(matrix)
 
-
     poi_max = np.max(matrix, axis=1).tolist()
+    poi_impor = np.sum(matrix_x, axis=1)
+    poi_impor_list = poi_impor.tolist()
+    print(poi_impor_list)
+    poi_impor_mean = np.mean(poi_impor)
+    poi_impor_median = np.median(poi_impor)
+    print(poi_impor_mean)
+    print(poi_impor_median)
 
     delete_list = []
+    superior_list = []
     while 1:
+        # 找到最大值最小的那个
         b = min(poi_max)
+        # 如果最大值最小的大于阈值，说明没有噪声了
         if b >= prob:
             break
+        # 如果最大值最小的小于阈值，则说明还有噪声，那就判断到底是真噪声还是真上级
         else:
-            delete_list.append(poi_max.index(b))
-            poi_max[poi_max.index(b)] = 2
+            temp = poi_max.index(b)
+            if poi_impor_list[temp] > poi_impor_median:
+                superior_list.append(temp)
+            else:
+                delete_list.append(temp)
+            poi_max[temp] = 2
 
-    return delete_list
+    return delete_list, superior_list
 
 
-def purification(node, delete_list):
+def purification(node, delete_list, superior_list):
     """
     根据要删除的列表生成新的评论文本，新的矩阵X，以及新的景点列表和词列表
     用新的新的评论文本，新的矩阵X，以及新的景点列表和词列表生成本层的初始文件
+    :param node: 当前节点对象
+    :param delete_list: 要删除的文件夹
+    :param superior_list: 上推的文件夹
+    :return:
     """
 
     # 打开删除前的评论文本
@@ -362,9 +389,12 @@ def purification(node, delete_list):
     list_poi = pickle.load(fr1)
 
     delete_list_name = list(list_poi[k] for k in delete_list)
+    superior_list_name = list(list_poi[k] for k in superior_list)
 
     print('[Main] 删除的噪点为：')
     print(delete_list_name)
+    print('[Main] 上推的对象为：')
+    print(superior_list_name)
 
     index_list = list(range(len(list_poi)))
 
@@ -414,13 +444,16 @@ def recursion(k, level, flag_U, flag_V, node, visual_type, purify_type, purify_p
 
     print(' ========================== Running level ', level, 'Node', node.nodeSelf,
           ' ==========================')
+    
     start = time.time()
-    W_u, D_u, W_v, D_v, U, H, V, X = prepare_matrix(k, node, flag_U, flag_V)
-    print('[Main] 构建初始矩阵完成')
-
-    # 如果待聚类的POI数量少于一百，则不进行聚类
-    if X.shape[0] < 80:
+    
+    # 如果本节点没有生成初始矩阵（有可能是没有数据），则跳过这个节点
+    try:
+        W_u, D_u, W_v, D_v, U, H, V, X = prepare_matrix(k, node, flag_U, flag_V)
+    except Exception:
         return
+    
+    print('[Main] 构建初始矩阵完成')
 
     # 检查这个文件夹下面的矩阵和矩阵相关的两个list的行数和列数是否匹配
     if not pre_check_match(X, node):
@@ -439,32 +472,48 @@ def recursion(k, level, flag_U, flag_V, node, visual_type, purify_type, purify_p
 
     elif purify_type == 1:
         while 1:
+            print("开始运行")
             U, H, V = nmf.NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, flag_U, flag_V, node, visual_type)
-            delete_list = purification_prepare(U, purify_prob)
+            print("开始筛选")
+            delete_list, superior_list = purification_prepare(U, X, purify_prob)
+            if len(superior_list) != 0:
+                print(print('[Main] 本层发现{}个属于上级的词汇'.format(len(superior_list))))
             if len(delete_list) == 0:
                 print(print('[Main] 无需迭代更新本层的初始文件'))
                 break
             print('[Main] 准备删除{}个噪点景点并更新本层的初始文件'.format(len(delete_list)))
             # 更新本层data中的初始文件
-            purification(node, delete_list)
+            purification(node, delete_list, superior_list)
             print('[Main] 更新本层的初始文件完成')
             # 重新读入本层data中的初始文件并生成初始矩阵
             W_u, D_u, W_v, D_v, U, H, V, X = prepare_matrix(k, node, flag_U, flag_V)
             print('[Main] 重新构建初始矩阵完成')
 
+    entropy_loss, flag_entropy = Getloss(X, k, U, level, alpha=0.1, beta=0.1)
+
+    # 如果 loss 为正，则说明这次的聚类有意义，则继续将保存结果
     # 将这层的结果写进这层的result文件夹中，然后根据需要创建下一层的文件
     # 如果结果中的第n类中的数量大于阈值，并且不是倒数第一层，则需要创建下一层文件夹
     # 循环创建下一层文件夹，并且准备下一层所需要的所有初始矩阵
-    if level <= MAX_LEVEL - 1:
-        V_convert = V * H.T
-        write_results(k, level, node, U, V_convert)
+    if flag_entropy:
+        print('[Main] 后剪枝判断：entropy_loss 为正 {} ，这次的聚类有意义，现在开始保存聚类结果'.format(entropy_loss))
+        if level <= MAX_LEVEL - 1:
+            V_convert = V * H.T
+            write_results(k, level, node, U, V_convert)
 
-    # 递归进入下一层
-    for child in range(k):
-        child_path = os.path.join(node.nodeSelf, str(child))
-        if os.path.exists(child_path):
-            child_node = Node(child_path)
-            recursion(k, level + 1, flag_U, flag_V, child_node, visual_type, purify_type, purify_prob)
+        # 递归进入下一层
+        for child in range(k):
+            child_path = os.path.join(node.nodeSelf, str(child))
+            if os.path.exists(child_path):
+                child_node = Node(child_path)
+                recursion(k, level + 1, flag_U, flag_V, child_node, visual_type, purify_type, purify_prob)
+    # 如果 loss 为负，则说明这次的聚类无意义，则删除整个文件夹，包括文件夹内的初始文件
+    else:
+        print('[Main] 后剪枝判断：entropy_loss 为负 {} ，这次的聚类无意义，现在开始删除整个文件夹'.format(entropy_loss))
+        path = node.nodeSelf
+        shutil.rmtree(path)
+
+
 
 
 def main(k, visual_type, purify_type, flag_U, flag_V, purify_prob):

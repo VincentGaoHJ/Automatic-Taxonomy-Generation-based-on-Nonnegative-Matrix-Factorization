@@ -119,13 +119,10 @@ def NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, flag_U, flag_V, node, visual_type):
     loss_matrix = None
 
     # 设置可视化进度条
-    bar = ProgressBar(steps)
+    # bar = ProgressBar(steps)
     print("The step numbers of iteration is {}".format(steps))
     for step in range(steps):
-        bar.update(step)
-        time.sleep(1)
-    for step in range(steps):
-        bar.update(step)
+        # bar.update(step)
         # print("[{step}/{steps} NMF]Update matrices".format(step=step, steps=steps))
         # Update matrix H
         # print("[NMF]Update matrix H")
@@ -158,7 +155,7 @@ def NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, flag_U, flag_V, node, visual_type):
         # print("[NMF]Counting loss")
         row = loss(X, U, H, V, D_u, D_v, W_u, W_v, flag_U, flag_V, lamda_u, lamda_v)
         row = np.array(row, dtype=float)
-        # print("[{step}/{steps} loss]Results: ".format(step=step, steps=steps), row[0], row[1], row[2], row[3])
+        print("[{step}/{steps} loss]Results: ".format(step=step, steps=steps), row[0], row[1], row[2], row[3])
         if loss_matrix is not None:
             loss_matrix = np.row_stack((loss_matrix, row))
         else:
@@ -167,14 +164,14 @@ def NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, flag_U, flag_V, node, visual_type):
         # visualize
         V_convert = V * H.T  # （AB）转置 =B 转置 * A 转置
         if step % 100 == 1:
-            # print("[{step}/{steps} NMF]Visualize the table".format(step=step, steps=steps))
+            print("[{step}/{steps} NMF]Visualize the table".format(step=step, steps=steps))
             create_table(U, V_convert, node, step)
-            # print("[{step}/{steps} NMF]Visualize the image".format(step=step, steps=steps))
+            print("[{step}/{steps} NMF]Visualize the image".format(step=step, steps=steps))
             visualize(U, V_convert, loss_matrix, node, step, visual_type)
 
         # save model
         if step % 100 == 1:
-            # print("[{step}/{steps} NMF]Save Model".format(step=step, steps=steps))
+            print("[{step}/{steps} NMF]Save Model".format(step=step, steps=steps))
             save_model(U, V_convert, node, step)
 
     return U, H, V
