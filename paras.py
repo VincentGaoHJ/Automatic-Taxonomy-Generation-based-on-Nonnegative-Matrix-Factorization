@@ -22,7 +22,7 @@ def load_init_params():
     # Initialize the number of cluster
     pd['num_cluster'] = 5
 
-    pd['steps'] = 1006
+    pd['steps'] = 106
     pd['lamda_u'] = 0.1
     pd['lamda_v'] = 0.1
 

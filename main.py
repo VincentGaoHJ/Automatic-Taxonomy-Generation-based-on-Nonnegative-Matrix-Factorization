@@ -489,29 +489,21 @@ def recursion(k, level, flag_U, flag_V, node, visual_type, purify_type, purify_p
             W_u, D_u, W_v, D_v, U, H, V, X = prepare_matrix(k, node, flag_U, flag_V)
             print('[Main] 重新构建初始矩阵完成')
 
-    entropy_loss, flag_entropy = Getloss(X, k, U, level, alpha=0.1, beta=0.1)
-
-    # 如果 loss 为正，则说明这次的聚类有意义，则继续将保存结果
     # 将这层的结果写进这层的result文件夹中，然后根据需要创建下一层的文件
     # 如果结果中的第n类中的数量大于阈值，并且不是倒数第一层，则需要创建下一层文件夹
     # 循环创建下一层文件夹，并且准备下一层所需要的所有初始矩阵
-    if flag_entropy:
-        print('[Main] 后剪枝判断：entropy_loss 为正 {} ，这次的聚类有意义，现在开始保存聚类结果'.format(entropy_loss))
-        if level <= MAX_LEVEL - 1:
-            V_convert = V * H.T
-            write_results(k, level, node, U, V_convert)
 
-        # 递归进入下一层
-        for child in range(k):
-            child_path = os.path.join(node.nodeSelf, str(child))
-            if os.path.exists(child_path):
-                child_node = Node(child_path)
-                recursion(k, level + 1, flag_U, flag_V, child_node, visual_type, purify_type, purify_prob)
-    # 如果 loss 为负，则说明这次的聚类无意义，则删除整个文件夹，包括文件夹内的初始文件
-    else:
-        print('[Main] 后剪枝判断：entropy_loss 为负 {} ，这次的聚类无意义，现在开始删除整个文件夹'.format(entropy_loss))
-        path = node.nodeSelf
-        shutil.rmtree(path)
+    print('[Main] 后剪枝判断：entropy_loss 为正 {} ，这次的聚类有意义，现在开始保存聚类结果'.format(entropy_loss))
+    if level <= MAX_LEVEL - 1:
+        V_convert = V * H.T
+        write_results(k, level, node, U, V_convert)
+
+    # 递归进入下一层
+    for child in range(k):
+        child_path = os.path.join(node.nodeSelf, str(child))
+        if os.path.exists(child_path):
+            child_node = Node(child_path)
+            recursion(k, level + 1, flag_U, flag_V, child_node, visual_type, purify_type, purify_prob)
 
 
 
