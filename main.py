@@ -15,7 +15,6 @@ import datetime
 import numpy as np
 import scipy.sparse as sp
 from NextPOI import next_poi
-from filt_entropy import Getloss
 from paras import load_init_params
 
 MAX_LEVEL = 6
@@ -493,7 +492,6 @@ def recursion(k, level, flag_U, flag_V, node, visual_type, purify_type, purify_p
     # 如果结果中的第n类中的数量大于阈值，并且不是倒数第一层，则需要创建下一层文件夹
     # 循环创建下一层文件夹，并且准备下一层所需要的所有初始矩阵
 
-    print('[Main] 后剪枝判断：entropy_loss 为正 {} ，这次的聚类有意义，现在开始保存聚类结果'.format(entropy_loss))
     if level <= MAX_LEVEL - 1:
         V_convert = V * H.T
         write_results(k, level, node, U, V_convert)

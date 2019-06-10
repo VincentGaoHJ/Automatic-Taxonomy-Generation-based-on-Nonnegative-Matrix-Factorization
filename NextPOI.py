@@ -129,9 +129,8 @@ def next_poi(POI_ind, comment_data, max_df=0.8, min_df=2):
     poi_matrix1 = tfidf_vec1.fit_transform(new_comment_data_cut_tfidf)
     poi_dic1 = tfidf_vec1.get_feature_names()
 
-    poi_matrix1 = poi_matrix1.toarray()
+    # poi_matrix1 = poi_matrix1.toarray()
+    # poi_matrix_bool = np.int64(poi_matrix1 > 0)
+    # poi_matrix_bool = sp.csr_matrix(poi_matrix_bool)
 
-    poi_matrix_bool = np.int64(poi_matrix1 > 0)
-    poi_matrix_bool = sp.csr_matrix(poi_matrix_bool)
-
-    return poi_matrix_bool, poi_dic1, new_comment_data
+    return poi_matrix1, poi_dic1, new_comment_data
