@@ -8,9 +8,9 @@ Created on Wed Jan 30 14:14:53 2019
 import os
 import numpy as np
 import scipy.sparse as sp
-from src.visualize import visualize
+from src.visual_func.visualize import visualize
 from src.config import load_init_params
-from src.table_image import create_table
+from src.visual_func.table_image import create_table
 
 
 def select_rows_from_csr_mtx(csr_mtx, row_head_indices, row_tail_indices):
