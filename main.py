@@ -16,6 +16,7 @@ import numpy as np
 import scipy.sparse as sp
 from NextPOI import next_poi
 from paras import load_init_params
+from utils.config import EXPERIMENT_DIR
 
 MAX_LEVEL = 6
 
@@ -35,9 +36,9 @@ def create_dir():
     为本次实验创建一个独立的文件夹
     :return:
     """
-    root = os.getcwd()
+    # root = os.getcwd()
     nowTime = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
-    folder = os.path.join(root, nowTime)
+    folder = os.path.join(EXPERIMENT_DIR, nowTime)
     # 创建文件夹
     os.makedirs(folder)
     # 创建这个文件夹的对象
@@ -443,15 +444,15 @@ def recursion(k, level, flag_U, flag_V, node, visual_type, purify_type, purify_p
 
     print(' ========================== Running level ', level, 'Node', node.nodeSelf,
           ' ==========================')
-    
+
     start = time.time()
-    
+
     # 如果本节点没有生成初始矩阵（有可能是没有数据），则跳过这个节点
     try:
         W_u, D_u, W_v, D_v, U, H, V, X = prepare_matrix(k, node, flag_U, flag_V)
     except Exception:
         return
-    
+
     print('[Main] 构建初始矩阵完成')
 
     # 检查这个文件夹下面的矩阵和矩阵相关的两个list的行数和列数是否匹配
@@ -504,8 +505,6 @@ def recursion(k, level, flag_U, flag_V, node, visual_type, purify_type, purify_p
             recursion(k, level + 1, flag_U, flag_V, child_node, visual_type, purify_type, purify_prob)
 
 
-
-
 def main(k, visual_type, purify_type, flag_U, flag_V, purify_prob):
     """
     主函数，配置准备文件并进入递归
@@ -519,6 +518,7 @@ def main(k, visual_type, purify_type, flag_U, flag_V, purify_prob):
     level = 1
 
     # 创建根节点以及本次实验根文件夹
+
     node = create_dir()
     create_node_dir(node)
 

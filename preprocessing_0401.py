@@ -10,10 +10,12 @@ import re
 import csv
 import jieba
 import pickle
-from jieba import posseg
 import scipy.sparse as sp
+from jieba import posseg
 from collections import Counter
 from sklearn.feature_extraction.text import TfidfVectorizer
+from utils.config import RAW_DATA, PROCESSED_DATA
+from utils.logger import logger
 
 
 def init():
@@ -28,7 +30,8 @@ def init():
     """
     # 加载 comment_all, 提取 commentary_user, comment_id
     comment_all = []
-    with open('.\\raw_data\\comment_all.csv', 'r', encoding='utf-8-sig') as csvfile:
+    comment_path = os.path.join(RAW_DATA, 'comment_all.csv')
+    with open(comment_path, 'r', encoding='utf-8-sig') as csvfile:
         reader = csv.reader(csvfile)
         for line in reader:
             comment_all.append(line)
@@ -38,7 +41,8 @@ def init():
 
     # 加载 list_all_sub, 提取 list_all_name
     list_all_sub = []
-    with open('.\\raw_data\\list_all_sub.txt', encoding='utf-8') as f:
+    list_all_path = os.path.join(RAW_DATA, 'list_all_sub.txt')
+    with open(list_all_path, encoding='utf-8') as f:
         data = f.readlines()
         for line in data:
             a = re.split('[\t\n]', line)
@@ -53,7 +57,8 @@ def init():
         jieba.add_word(word)
 
     # 加载停用词
-    with open('.\\raw_data\\stop_words.txt') as f1:
+    stop_words_path = os.path.join(RAW_DATA, 'stop_words.txt')
+    with open(stop_words_path) as f1:
         stopwords = f1.read().split()
 
     return comment_user, comment_id, list_all_name, list_all_id, stopwords
@@ -107,15 +112,15 @@ def comment_user_cut(com, type_cut=2):
     """
 
     if type_cut == 1:
-        print(u"[全模式]: ")
+        logger.info('采用 [全模式] 进行分词')
     elif type_cut == 2:
-        print(u"[精确模式]: ")
+        logger.info('采用 [精确模式] 进行分词')
     elif type_cut == 3:
-        print(u"[搜索引擎模式]: ")
+        logger.info('采用 [搜索引擎模式] 进行分词')
     user_cut = []
     for i in range(len(com)):
         if (i + 1) % 1000 == 0:
-            print('%d 分词完成' % (i + 1))
+            logger.debug(f'{str(i + 1)} 分词完成')
         user_cut.append(segment(com[i], type_cut))
     return user_cut
 
@@ -131,7 +136,7 @@ def flag(POI_i, k, Flag):
         POIi_new:
     """
 
-    print('%d 词性判断' % k)
+    logger.debug(f'{str(k)} 词性判断')
     term_cut = posseg.cut(POI_i)
     POI_list = [(w.word, w.flag) for w in term_cut]
     POI_save = []
@@ -175,7 +180,7 @@ def getPOI(list_all_name, user_cut, comment_id):
     print(POI_name)
     for i in range(len(user_cut)):
         if (i + 1) % 1000 == 0:
-            print('%d 拼接完成' % (i + 1))
+            logger.debug(f'{str(i + 1)} 拼接完成')
         if comment_id[i] != node:
             end = i
             POI_word = '/'.join(user_cut[start:end])
@@ -240,24 +245,19 @@ def filtTFIDF(POI_matrix, POI_dic, POI, POI_name, k):
     """
     # 文件保存路径
 
-    curPath = os.getcwd()
-    tempPath = '\\data\\POIcount%d' % k
-    path = curPath + os.path.sep + tempPath
-
-    tempPath = '\\data\\POI_tfidf%d' % k
-    path1 = curPath + os.path.sep + tempPath
-
-    tempPath = '\\data\\POI_stpw%d' % k
-    path2 = curPath + os.path.sep + tempPath
+    path = os.path.join(PROCESSED_DATA, f'POI_count{k}')
+    path1 = os.path.join(PROCESSED_DATA, f'POI_tfidf{k}')
+    path2 = os.path.join(PROCESSED_DATA, f'POI_stpw{k}')
 
     if not os.path.exists(path):
+        logger.info(f'Create Directory: {path}')
         os.makedirs(path)
-    elif not os.path.exists(path1):
+    if not os.path.exists(path1):
+        logger.info(f'Create Directory: {path1}')
         os.makedirs(path1)
-    elif not os.path.exists(path2):
+    if not os.path.exists(path2):
+        logger.info(f'Create Directory: {path2}')
         os.makedirs(path2)
-    else:
-        print('路径已经存在！')
 
     # 写入新的POI
     filename_POI = '.\\data\\POI%d' % k + '.txt'
@@ -269,7 +269,7 @@ def filtTFIDF(POI_matrix, POI_dic, POI, POI_name, k):
 
         # 保存词频
         filename = path + '\\POI' + POI_name[i] + '.txt'
-        print('%s 词频统计完成' % (POI_name[i]))
+        logger.debug(f'{POI_name[i]} 词频统计完成')
         countword = CountWord(POI[i])
         with open(filename, 'w') as f:
             for t in countword:
@@ -278,7 +278,7 @@ def filtTFIDF(POI_matrix, POI_dic, POI, POI_name, k):
 
         # 保存TF-IDF值
         filename1 = path1 + '\\POI_tfidf' + POI_name[i] + '.txt'
-        print('%s TF-IDF 统计完成' % (POI_name[i]))
+        logger.debug(f'{POI_name[i]} TF-IDF 统计完成')
 
         # 得到非零元素的索引
         POI_i = POI_matrix[i, :].toarray()[0]
@@ -316,7 +316,7 @@ def filtTFIDF(POI_matrix, POI_dic, POI, POI_name, k):
 
         # 将保留下来的词语，组成新的POI[i]
         poi_new = '/'.join(POI_new)
-        print('%d 新POI完成' % (i + 1))
+        logger.debug(f'{str(i + 1)} 新 POI 完成')
 
         # 保存新的 POI
         POI_new_list.append(poi_new)
@@ -381,7 +381,7 @@ if __name__ == "__main__":
     for i in range(len(list_all_name)):
         POI_name_dic[list_all_name[i]] = list_all_id[i]
 
-    with open('.\\data\\POI_name_dic.pickle', 'wb') as f:
+    with open(os.path.join(PROCESSED_DATA, 'POI_name_dic.pickle'), 'wb') as f:
         pickle.dump(POI_name_dic, f)
 
     # 对每一条评论进行分词
@@ -389,20 +389,16 @@ if __name__ == "__main__":
 
     # 将POI下面的所有评论拼接在一起，返回列表POI（元素为每个poi下所有评论）和列表POI_name（元素为poi中文名）
     POI, POI_name = getPOI(list_all_name, user_cut, comment_id)
+    logger.debug(f'POI 长度：{len(POI)}')
+    logger.debug(f'POI_name 长度：{len(POI_name)}')
 
-    print(len(POI))
-    print(len(POI_name))
-
-    # 生成词频矩阵以及关键字
-    print("生成词频矩阵以及关键字")
+    logger.info('生成词频矩阵以及关键字')
     POI_matrix, POI_dic = createMATRIX(POI)
 
-    # 使用TFIDF对词语进行筛选，删除TFIDF值位于后20%的词语，剩下的词语组成新的POI
-    print("使用TFIDF对词语进行筛选，删除TFIDF值位于后20%的词语，剩下的词语组成新的POI")
+    logger.info('使用TFIDF对词语进行筛选，删除TFIDF值位于后20%的词语，剩下的词语组成新的POI')
     POI_new = filtTFIDF(POI_matrix, POI_dic, POI, POI_name, k)
 
-    # 对name进行切割，重新整合 POI
-    print("对name进行切割，重新整合 POI")
+    logger.info('对name进行切割，重新整合 POI')
     name, name_ind = cutList(POI_name)
     POI_name = POI_name + name
 
@@ -421,22 +417,21 @@ if __name__ == "__main__":
     for i in range(len(POI_new)):
         POI_new[i] = flag(POI_new[i], i + 1, Flag)
 
-    # 生成新的 POI，POI_dic
-    print("生成新的 POI，POI_dic")
+    logger.info('生成新的 POI，POI_dic')
     POI_new_matrix, POI_new_dic = createMATRIX(POI_new)
 
-    # 保存
-    sp.save_npz('.\\data\\POI_matrix%d.npz' % k, POI_new_matrix, True)
+    logger.info('Save Files')
+    sp.save_npz(os.path.join(PROCESSED_DATA, f'POI_matrix{k}.npz'), POI_new_matrix, True)
 
     if k == 1:
-        with open('.\\data\\POI_dic.pickle', 'wb') as f:
-            pickle.dump(POI_new_dic, f)
-
-        with open('.\\data\\POI_name.pickle', 'wb') as f:
-            pickle.dump(POI_name, f)
+        dic_path = os.path.join(PROCESSED_DATA, 'POI_dic.pickle')
+        POI_name_path = os.path.join(PROCESSED_DATA, 'POI_name.pickle')
     else:
-        with open('.\\data\\POI_dic_%d.pickle' % k, 'wb') as f:
-            pickle.dump(POI_new_dic, f)
+        dic_path = os.path.join(PROCESSED_DATA, f'POI_dic_{k}.pickle')
+        POI_name_path = os.path.join(PROCESSED_DATA, f'POI_name_{k}.pickle')
+    with open(dic_path, 'wb') as f:
+        pickle.dump(POI_new_dic, f)
+    with open(POI_name_path, 'wb') as f:
+        pickle.dump(POI_name, f)
 
-        with open('.\\data\\POI_name_%d.pickle' % k, 'wb') as f:
-            pickle.dump(POI_name, f)
+    logger.info('MISSION COMPLETED!')
