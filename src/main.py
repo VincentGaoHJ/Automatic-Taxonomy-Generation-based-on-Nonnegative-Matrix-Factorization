@@ -15,7 +15,7 @@ import datetime
 import numpy as np
 import scipy.sparse as sp
 from src.NextPOI import next_poi
-from src.paras import load_init_params
+from src.config import load_init_params
 from utils.config import EXPERIMENT_DIR
 
 MAX_LEVEL = 6

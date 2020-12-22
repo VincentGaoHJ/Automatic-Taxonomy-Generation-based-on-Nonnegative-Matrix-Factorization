@@ -8,7 +8,7 @@ Created on 2019/3/23
 import os
 import pickle
 import numpy as np
-from src.paras import load_init_params
+from src.config import load_init_params
 from prettytable import PrettyTable
 from PIL import Image, ImageDraw, ImageFont
 

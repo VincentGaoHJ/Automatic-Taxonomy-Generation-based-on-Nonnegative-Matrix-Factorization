@@ -9,7 +9,7 @@ import os
 import numpy as np
 import scipy.sparse as sp
 from src.visualize import visualize
-from src.paras import load_init_params
+from src.config import load_init_params
 from src.table_image import create_table
 
 
