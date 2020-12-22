@@ -260,7 +260,7 @@ def filtTFIDF(POI_matrix, POI_dic, POI, POI_name, k):
         os.makedirs(path2)
 
     # 写入新的POI
-    filename_POI = '.\\data\\POI%d' % k + '.txt'
+    filename_POI = os.path.join(PROCESSED_DATA, f'POI{str(k)}.txt')
     f_POI = open(filename_POI, 'w')
 
     POI_new_list = []
@@ -283,12 +283,10 @@ def filtTFIDF(POI_matrix, POI_dic, POI, POI_name, k):
         # 得到非零元素的索引
         POI_i = POI_matrix[i, :].toarray()[0]
         y_ind = POI_i.nonzero()[0].tolist()
-        #        print('y_ind ', len(y_ind))
 
         # 得到非零元素的tfidf，字典
         POI_i_tfidf = [POI_i[t] for t in y_ind]
         POI_i_dic = [POI_dic[t] for t in y_ind]
-        #        print('POI_i_tfidf ', len(POI_i_tfidf))
 
         # 对于tfidf值从大到小进行排列
         POI_zip = zip(POI_i_dic, POI_i_tfidf)
@@ -304,15 +302,11 @@ def filtTFIDF(POI_matrix, POI_dic, POI, POI_name, k):
         # save_w为保留下来的词语        
         l = int(len(POI_zip) * 0.5)
         save_w = [i[0] for i in POI_zip[:l]]
-        #        print('save_w ', len(save_w))
 
         # 对原有的 POI[i] 中的词语进行筛选
         POI_cut = POI[i].split('/')
-        #        print('POI_cut ', len(POI_cut))
         POI_new = [t for t in POI_cut if t in save_w]
         stpw = [t for t in POI_cut if t not in save_w]
-        #        print('POI_new ', len(POI_new))
-        #        print('stpw ', len(stpw))
 
         # 将保留下来的词语，组成新的POI[i]
         poi_new = '/'.join(POI_new)
@@ -410,8 +404,8 @@ if __name__ == "__main__":
     POI_new = POI_new + POI_add
 
     # 需要保留的词性
-    Flag = ['a', 'ad', 'an', 'ag', 'al', 'f', 'n', 'nr', 'nr1', 'nr2', 'nrj', 'nrf', 'ns', 'b', 's', 'f', 'nt', 'nz',
-            'nl', 'ng', 't', 'tg']
+    Flag = ['a', 'ad', 'an', 'ag', 'al', 'f', 'n', 'nr', 'nr1', 'nr2', 'nrj',
+            'nrf', 'ns', 'b', 's', 'f', 'nt', 'nz','nl', 'ng', 't', 'tg']
 
     # 按照词性进行筛选
     for i in range(len(POI_new)):
