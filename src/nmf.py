@@ -6,13 +6,11 @@ Created on Wed Jan 30 14:14:53 2019
 """
 
 import os
-import time
 import numpy as np
 import scipy.sparse as sp
-from visualize import visualize
-from paras import load_init_params
-from table_image import create_table
-from progress_bar import ProgressBar
+from src.visualize import visualize
+from src.paras import load_init_params
+from src.table_image import create_table
 
 
 def select_rows_from_csr_mtx(csr_mtx, row_head_indices, row_tail_indices):

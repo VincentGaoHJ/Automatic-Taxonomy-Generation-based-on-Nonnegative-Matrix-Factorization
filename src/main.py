@@ -6,7 +6,7 @@ Created on Fri Feb  1 14:58:57 2019
 """
 
 import os
-import nmf
+from src import nmf
 import time
 import shutil
 import pickle
@@ -14,8 +14,8 @@ import pandas
 import datetime
 import numpy as np
 import scipy.sparse as sp
-from NextPOI import next_poi
-from paras import load_init_params
+from src.NextPOI import next_poi
+from src.paras import load_init_params
 from utils.config import EXPERIMENT_DIR
 
 MAX_LEVEL = 6
@@ -24,7 +24,7 @@ MAX_LEVEL = 6
 class Node:
     def __init__(self, node_dir):
         self.nodeSelf = node_dir
-        self.data_dir = os.path.join(node_dir, "data")
+        self.data_dir = os.path.join(node_dir, "../data")
         self.image_dir = os.path.join(node_dir, "image")
         self.model_dir = os.path.join(node_dir, "model")
         self.table_dir = os.path.join(node_dir, "table")
@@ -523,7 +523,7 @@ def main(k, visual_type, purify_type, flag_U, flag_V, purify_prob):
     create_node_dir(node)
 
     # 将数据拷贝到本次实验文件夹中
-    copy_file("./data", node.data_dir, flag_U, flag_V, level)
+    copy_file("../data", node.data_dir, flag_U, flag_V, level)
 
     recursion(k, level, flag_U, flag_V, node, visual_type, purify_type, purify_prob)
 
