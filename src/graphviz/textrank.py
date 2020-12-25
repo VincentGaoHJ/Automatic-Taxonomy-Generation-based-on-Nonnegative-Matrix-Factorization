@@ -96,7 +96,7 @@ def geti(dirname, r, com_name, com):
     :return:
     """
     print(dirname)
-    resultpath = dirname + os.path.sep + 'result\\%d-poi.csv' % r
+    resultpath = os.path.join(EXPERIMENT_DIR, dirname, 'result', f'{r}-poi.csv')
     if dirname == []:
         keywords = []
     else:
