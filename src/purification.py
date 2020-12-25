@@ -18,7 +18,7 @@ import scipy.sparse as sp
 from src.NextPOI import next_poi
 from src.config import load_init_params
 from utils.config import EXPERIMENT_DIR, PROCESSED_DATA
-
+from src.func.matrix_manipulation import normalize
 
 def purification_prepare(mat, mat_x, prob):
     """
@@ -75,6 +75,8 @@ def purification(node, delete_list, superior_list):
     :return:
     """
 
+    pd = load_init_params()
+
     # 打开删除前的评论文本
     with open(node.data_dir + '\\' + pd['POI_comment'], 'r') as f:
         comment_data = f.read().split('\n')
@@ -122,3 +124,5 @@ def purification(node, delete_list, superior_list):
 
     # 写入本层新的X矩阵
     sp.save_npz(node.data_dir + '\\' + pd['matrix_X'], new_X, True)
+
+

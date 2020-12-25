@@ -5,6 +5,19 @@
 @Description: 
 """
 
+import os
+
+MAX_LEVEL = 6
+
+class Node:
+    def __init__(self, node_dir):
+        self.nodeSelf = node_dir
+        self.data_dir = os.path.join(node_dir, "data")
+        self.image_dir = os.path.join(node_dir, "image")
+        self.model_dir = os.path.join(node_dir, "model")
+        self.table_dir = os.path.join(node_dir, "table")
+        self.result_dir = os.path.join(node_dir, "result")
+
 
 def load_init_params():
     pd = dict()

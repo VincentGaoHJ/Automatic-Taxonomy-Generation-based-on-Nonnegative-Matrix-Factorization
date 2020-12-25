@@ -15,22 +15,12 @@ import datetime
 import numpy as np
 import scipy.sparse as sp
 from src.nmf import NMF_sp
-from src.config import load_init_params
+from src.config import load_init_params, Node, MAX_LEVEL
 from src.NextPOI import next_poi
+from src.save_to_node_dir import write_results
+from src.func.node_manipulation import create_node_dir, copy_file
 from src.purification import purification_prepare, purification
 from utils.config import EXPERIMENT_DIR, PROCESSED_DATA
-
-MAX_LEVEL = 6
-
-
-class Node:
-    def __init__(self, node_dir):
-        self.nodeSelf = node_dir
-        self.data_dir = os.path.join(node_dir, "data")
-        self.image_dir = os.path.join(node_dir, "image")
-        self.model_dir = os.path.join(node_dir, "model")
-        self.table_dir = os.path.join(node_dir, "table")
-        self.result_dir = os.path.join(node_dir, "result")
 
 
 def create_dir():
@@ -85,64 +75,6 @@ def pre_check_min(mat, k):
     if mat.shape[1] < k:
         flag = False
     return flag
-
-
-def normalize(data):
-    for i in range(len(data)):
-        m = np.sum(data[i])
-        data[i] /= m
-    return data
-
-
-def create_node_dir(node):
-    """
-    获取当前目录并创建保存文件夹
-    倒数第二层创建最后一层的时候不创建0 - 4子文件夹，因为最后一层不需要下一层
-    :return:
-        folder_image:存放可视化图片的文件夹
-        folder_model:存放过程模型的文件夹
-        folder_table:存放最终结果列表的文件夹
-    """
-
-    os.makedirs(node.data_dir)
-    os.makedirs(node.image_dir)
-    os.makedirs(node.model_dir)
-    os.makedirs(node.table_dir)
-    os.makedirs(node.result_dir)
-
-
-def copy_file(source_dir, target_dir, flag_U, flag_V, level):
-    """
-    拷贝文件
-    :param source_dir: 源文件夹路径
-    :param target_dir: 目标文件夹路径
-    :param flag_U: 是否有对U的约束
-    :param flag_V: 是否有对V的约束
-    :param level: 级数
-        如果为0,则X矩阵和景点列表以及景点字典都需要拷贝，W矩阵和D矩阵视情况而定；
-        如果级数不为0，那么只有景点字典需要拷贝，其他都需要主动生成。
-    :return: None
-    """
-    # current_folder是‘模拟’文件夹下所有子文件名组成的一个列表
-    # current_folder = os.listdir(source_dir)
-    current_folder = []
-    if level == 1:
-        current_folder = [pd["matrix_X"], pd['list_poi'], pd['list_word'], pd["POI_comment"]]
-        if flag_U is True:
-            current_folder.append(pd['matrix_W_u'])
-            current_folder.append(pd['matrix_D_u'])
-        if flag_V is True:
-            current_folder.append(pd['matrix_W_v'])
-            current_folder.append(pd['matrix_D_v'])
-
-    # 第二部分，将名称为file的文件复制到名为file_dir的文件夹中
-    for x in current_folder:
-        # 拼接出源文件路径
-        source_file = source_dir + '\\' + x
-        # 拼接出目标文件路径
-        target_file = target_dir + '\\' + x
-        # 将指定的文件source_file复制到target_file
-        shutil.copy(source_file, target_file)
 
 
 def prepare_matrix(k, node, flag_U, flag_V):
@@ -213,109 +145,6 @@ def classify(node, mat, list_poi, num):
     new_X, new_list_word, new_comment_data = next_poi(index_list, comment_data)
 
     return new_list_poi, new_X, new_list_word, new_comment_data
-
-
-def write_results(k, level, node, U, V_convert):
-    fr1 = open(node.data_dir + '\\' + pd['list_poi'], 'rb')
-    POI_name = pickle.load(fr1)
-    fr2 = open(node.data_dir + '\\' + pd["list_word"], 'rb')
-    POI_dic = pickle.load(fr2)
-
-    # 将这层的词语聚类结果写进这层的result文件夹中
-    for i in range(k):
-        matrix = V_convert.toarray()
-        matrix = normalize(matrix)
-
-        # 顺序输出每个word所属的类别
-        class_word = matrix.argmax(axis=1)
-
-        # 输出属于这一类的word的列表索引值
-        index = np.where(class_word == i)
-        index_list = index[0].tolist()
-
-        # 生成新的word的list
-        list_word = np.array(POI_dic)
-        new_word = list_word[index_list]
-        new_word_list = new_word.tolist()
-
-        # 生成新的景点属于这一类的概率的list
-        proba_word = matrix[index_list, i]
-        proba_word = proba_word.tolist()
-
-        pd_name = pandas.DataFrame(new_word_list, columns=['word_name'])
-        pd_porb = pandas.DataFrame(proba_word, columns=['word_porb'])
-
-        pd_save = pandas.concat([pd_name, pd_porb], axis=1)
-
-        pd_save.to_csv(node.result_dir + '\\' + str(i) + '-word.csv', encoding='utf_8_sig')
-
-    # 将这层的景点聚类结果写进这层的result文件夹中
-    # 循环创建下一层文件夹（如果需要创建），并且准备下一层所需要的所有初始矩阵
-    for i in range(k):
-        # 将这层的景点聚类结果写进这层的result文件夹中
-        matrix = U.toarray()
-        matrix = normalize(matrix)
-
-        # 顺序输出POI所属的类别
-        class_POI = matrix.argmax(axis=1)
-
-        # 输出属于这一类的景点的列表索引值
-        index = np.where(class_POI == i)
-        index_list = index[0].tolist()
-
-        # 生成新的景点的list
-        list_poi = np.array(POI_name)
-        new_poi = list_poi[index_list]
-        new_list_poi = new_poi.tolist()
-
-        # 生成新的景点属于这一类的概率的list
-        proba_poi = matrix[index_list, i]
-        proba_poi = proba_poi.tolist()
-
-        pd_name = pandas.DataFrame(new_list_poi, columns=['poi_name'])
-        pd_porb = pandas.DataFrame(proba_poi, columns=['poi_porb'])
-
-        pd_save = pandas.concat([pd_name, pd_porb], axis=1)
-
-        pd_save.to_csv(node.result_dir + '\\' + str(i) + '-poi.csv', encoding='utf_8_sig')
-
-        # 判断这一层新的poi数量是否大于阈值，如果大于，则需要创建下一层文件夹，如果小于则不需要
-        if pd_save.shape[0] <= 30:
-            print('[Main] 预剪枝判断：第 {} 类新的 poi 数量 {} 小于阈值，不继续进行聚类操作'.format(i, pd_save.shape[0]))
-        else:
-            print('[Main] 预剪枝判断：第 {} 类新的 poi 数量 {} 大于阈值，这可以继续进行聚类'.format(i, pd_save.shape[0]))
-            child_path = os.path.join(node.nodeSelf, str(i))
-            os.makedirs(child_path)
-
-            child_node = Node(child_path)
-
-            # 创建下一层文件夹
-            create_node_dir(child_node)
-
-            # 生成下一层需要的文件（如约束矩阵，新的X，以及新的景点列表以及新的词列表，还有新的评论文件）
-            new_list_poi, new_X, new_list_word, new_comment_data = classify(node, U, POI_name, i)
-
-            # 拷贝不需要修改的文件（例如景点字典）
-            copy_file(os.path.join(node.data_dir), os.path.join(child_node.data_dir), flag_U, flag_V, level)
-
-            # 写入新的本类poi的评论文件
-            with open(child_node.data_dir + '\\' + pd['POI_comment'], 'w') as f:
-                for line in new_comment_data:
-                    f.write(line)
-                    f.write('\n')
-
-            # 写入新的景点列表
-            list_file = open(child_node.data_dir + '\\' + pd['list_poi'], 'wb')
-            pickle.dump(new_list_poi, list_file)
-            list_file.close()
-
-            # 写入新的词列表
-            list_file = open(child_node.data_dir + '\\' + pd['list_word'], 'wb')
-            pickle.dump(new_list_word, list_file)
-            list_file.close()
-
-            # 写入新的X矩阵
-            sp.save_npz(child_node.data_dir + '\\' + pd['matrix_X'], new_X, True)
 
 
 def recursion(k, level, flag_U, flag_V, node, visual_type, purify_type, purify_prob):

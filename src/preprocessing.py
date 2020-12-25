@@ -88,27 +88,23 @@ def segment(text, type=2):
     """
 
     if type == 1:
-        #        print(u"[全模式]: ")
         seg_list = jieba.lcut(text, cut_all=True)
     elif type == 2:
-        #        print(u"[精确模式]: ")
         seg_list = jieba.lcut(text, cut_all=False)
     elif type == 3:
-        #        print(u"[搜索引擎模式]: ")
         seg_list = jieba.cut_for_search(text)
-
     # 筛选 长度大于1，包含中文字符，非停用词 的字符
-    seg = [i for i in seg_list if (len(i) > 1 and i not in stopwords and is_uchar(i))]
-    seg = '/'.join(seg)
-    return seg
+    seg_list = [seg for seg in seg_list if (len(seg) > 1 and seg not in stopwords and is_uchar(seg))]
+    seg_str = '/'.join(seg_list)
+    return seg_str
 
 
 def comment_user_cut(com, type_cut=2):
     """
-    将每一个comment进行分词
-    :param com: comment列表，元素为每个用户的评论（字符串）
+    将每一个 comment 进行分词
+    :param com: [list] comment 列表，元素为每个用户的评论（字符串）
     :param type_cut: 分词类型
-    :return: user_cut comment列表（元素是经过分词之后的评论）
+    :return: user_cut comment 列表（元素是经过分词之后的评论）
     """
 
     if type_cut == 1:
@@ -118,10 +114,10 @@ def comment_user_cut(com, type_cut=2):
     elif type_cut == 3:
         logger.info('采用 [搜索引擎模式] 进行分词')
     user_cut = []
-    for i in range(len(com)):
-        if (i + 1) % 1000 == 0:
-            logger.debug(f'{str(i + 1)} 分词完成')
-        user_cut.append(segment(com[i], type_cut))
+    for idx, comment in enumerate(com):
+        if (idx + 1) % 1000 == 0:
+            logger.debug(f'{str(idx + 1)} 分词完成')
+        user_cut.append(segment(comment, type_cut))
     return user_cut
 
 
@@ -225,10 +221,13 @@ def createMATRIX(P_M, Maxdf=0.2, Mindf=2):
     '''
 
     tfidf_vec = TfidfVectorizer(max_df=Maxdf, min_df=Mindf)
-    # 将文本中的词语转换为词频矩阵
+
+    logger.info('将文本中的词语转换为词频矩阵')
     POI_matrix = tfidf_vec.fit_transform(P_M)
-    # 所有文本的关键字
+
+    logger.info('所有文本的关键字')
     POI_dic = tfidf_vec.get_feature_names()
+
     return POI_matrix, POI_dic
 
 
@@ -405,7 +404,7 @@ if __name__ == "__main__":
 
     # 需要保留的词性
     Flag = ['a', 'ad', 'an', 'ag', 'al', 'f', 'n', 'nr', 'nr1', 'nr2', 'nrj',
-            'nrf', 'ns', 'b', 's', 'f', 'nt', 'nz','nl', 'ng', 't', 'tg']
+            'nrf', 'ns', 'b', 's', 'f', 'nt', 'nz', 'nl', 'ng', 't', 'tg']
 
     # 按照词性进行筛选
     for i in range(len(POI_new)):
