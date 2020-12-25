@@ -12,6 +12,7 @@ from src.visual_func.visualize import visualize
 from src.visual_func.table_image import create_table
 from src.config import (
     STEPS, LAMBDA_U, LAMBDA_V, FLAG_U, FLAG_V)
+from utils.logger import logger
 
 
 def select_rows_from_csr_mtx(csr_mtx, row_head_indices, row_tail_indices):
@@ -118,7 +119,7 @@ def NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, node):
 
     # 设置可视化进度条
     # bar = ProgressBar(steps)
-    print("The step numbers of iteration is {}".format(steps))
+    logger.info("The step numbers of iteration is {}".format(steps))
     for step in range(steps):
         # bar.update(step)
         # print("[{step}/{steps} NMF]Update matrices".format(step=step, steps=steps))
@@ -153,7 +154,7 @@ def NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, node):
         # print("[NMF]Counting loss")
         row = loss(X, U, H, V, D_u, D_v, W_u, W_v, lamda_u, lamda_v)
         row = np.array(row, dtype=float)
-        print("[{step}/{steps} loss]Results: ".format(step=step, steps=steps), row[0], row[1], row[2], row[3])
+        logger.info(f"[{step}/{steps} loss]Results: {row[0]} {row[1]} {row[2]} {row[3]}")
         if loss_matrix is not None:
             loss_matrix = np.row_stack((loss_matrix, row))
         else:
@@ -161,15 +162,15 @@ def NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, node):
 
         # visualize
         V_convert = V * H.T  # （AB）转置 =B 转置 * A 转置
-        if step % 100 == 1:
-            print("[{step}/{steps} NMF]Visualize the table".format(step=step, steps=steps))
+        if (step + 1) % 100 == 0:
+            logger.info(f"[{step + 1}/{steps} NMF]Visualize the table")
             create_table(U, V_convert, node, step)
-            print("[{step}/{steps} NMF]Visualize the image".format(step=step, steps=steps))
+            logger.info(f"[{step + 1}/{steps} NMF]Visualize the image")
             visualize(U, V_convert, loss_matrix, node, step)
 
         # save model
-        if step % 100 == 1:
-            print("[{step}/{steps} NMF]Save Model".format(step=step, steps=steps))
+        if (step + 1) % 100 == 0 and step != 0:
+            logger.info(f"[{step + 1}/{steps} NMF]Save Model")
             save_model(U, V_convert, node, step)
 
     return U, H, V

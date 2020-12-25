@@ -17,7 +17,7 @@ from src.config import (
     Node, FLAG_U, FLAG_V, NUM_CLUSTER,
     POI_LST, WORD_LST, POI_COMMENT, MATRIX_X)
 from src.NextPOI import next_poi
-
+from utils.logger import logger
 
 def classify(node, mat, list_poi, num):
     """
@@ -120,9 +120,9 @@ def write_results(level, node, U, V_convert):
 
         # 判断这一层新的poi数量是否大于阈值，如果大于，则需要创建下一层文件夹，如果小于则不需要
         if pd_save.shape[0] <= 30:
-            print('[Main] 预剪枝判断：第 {} 类新的 poi 数量 {} 小于阈值，不继续进行聚类操作'.format(i, pd_save.shape[0]))
+            logger.info('[Main] 预剪枝判断：第 {} 类新的 poi 数量 {} 小于阈值，不继续进行聚类操作'.format(i, pd_save.shape[0]))
         else:
-            print('[Main] 预剪枝判断：第 {} 类新的 poi 数量 {} 大于阈值，这可以继续进行聚类'.format(i, pd_save.shape[0]))
+            logger.info('[Main] 预剪枝判断：第 {} 类新的 poi 数量 {} 大于阈值，这可以继续进行聚类'.format(i, pd_save.shape[0]))
             child_path = os.path.join(node.nodeSelf, str(i))
             os.makedirs(child_path)
 

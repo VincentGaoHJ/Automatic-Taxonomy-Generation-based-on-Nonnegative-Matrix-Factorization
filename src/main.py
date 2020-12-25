@@ -15,8 +15,7 @@ import scipy.sparse as sp
 from src.nmf import NMF_sp
 from src.config import (
     Node, FLAG_U, FLAG_V,
-    MAX_LEVEL, NUM_CLUSTER, VISUAL_TYPE, PURIFY_TYPE,
-    PURIFY_PROB, POI_LST, WORD_LST,
+    MAX_LEVEL, NUM_CLUSTER, PURIFY_TYPE, POI_LST, WORD_LST,
     MATRIX_X, MATRIX_WU, MATRIX_WV, MATRIX_DU, MATRIX_DV)
 from src.save_to_node_dir import write_results
 from src.func.node_manipulation import create_node_dir, copy_file
@@ -88,13 +87,13 @@ def prepare_matrix(node):
     D_v = None
 
     # 加载TFIDF矩阵
-    print("[main]Loading Matrix X")
+    logger.info('[main]Loading Matrix X')
     matrix_x = os.path.join(node.data_dir, MATRIX_X)
     X = sp.load_npz(matrix_x)
 
     # Initialize the constraint matrix for comments
     if FLAG_U:
-        print("[main]Loading Matrix W_u & D_u")
+        logger.info("[main]Loading Matrix W_u & D_u")
         matrix_wu_path = os.path.join(node.data_dir, MATRIX_WU)
         matrix_du_path = os.path.join(node.data_dir, MATRIX_DU)
         W_u = sp.load_npz(matrix_wu_path)
@@ -102,7 +101,7 @@ def prepare_matrix(node):
 
     # Initialize the constraint matrix for spots
     if FLAG_V:
-        print("[main]Loading Matrix W_v & D_v")
+        logger.info("[main]Loading Matrix W_v & D_v")
         matrix_wv_path = os.path.join(node.data_dir, MATRIX_WV)
         matrix_dv_path = os.path.join(node.data_dir, MATRIX_DV)
         W_v = sp.load_npz(matrix_wv_path)
@@ -111,8 +110,8 @@ def prepare_matrix(node):
     n = X.shape[0]
     m = X.shape[1]
 
-    print('[main]length n is : ', n)
-    print('[main]length m is : ', m)
+    logger.info(f'[main]length n is : {n}')
+    logger.info(f'[main]length m is : {m}')
 
     U = sp.rand(n, k, density=1, format='csr', dtype=np.dtype(float), random_state=None)
     H = sp.rand(k, k, density=1, format='csr', dtype=np.dtype(float), random_state=None)
@@ -131,8 +130,7 @@ def recursion(level, node):
     if level > MAX_LEVEL:
         return
 
-    print(' ========================== Running level ', level, 'Node', node.nodeSelf.split('data')[-1],
-          ' ==========================')
+    logger.info(f' ============== Running level {level} Node {node.nodeSelf.split("data")[-1]} =================')
 
     start = time.time()
 
@@ -151,11 +149,11 @@ def recursion(level, node):
     # 检查矩阵X的行和列是否大于聚类个数，若小于聚类个数则直接返回，这一层不进行聚类
     logger.info('检查矩阵X的行和列是否大于聚类个数')
     if not pre_check_min(X, NUM_CLUSTER):
-        print("The Number of rows or columns of a matrix is less than of clusters.")
+        logger.info("The Number of rows or columns of a matrix is less than of clusters.")
         return
 
     end = time.time()
-    print('[Main] Done reading the full data using time %s seconds' % (end - start))
+    logger.info('[Main] Done reading the full data using time %s seconds' % (end - start))
 
     if PURIFY_TYPE == 0:
         U, H, V = NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, node)
