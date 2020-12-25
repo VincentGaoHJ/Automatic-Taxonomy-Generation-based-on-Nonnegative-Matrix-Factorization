@@ -210,8 +210,8 @@ def main():
     copy_file(PROCESSED_DATA, node.data_dir, level)
 
     recursion(level, node)
-
-    print(' ========================== Done running the program ==========================')
+    
+    logger.info(' ========================== Done running the program ==========================')
 
 
 if __name__ == "__main__":
