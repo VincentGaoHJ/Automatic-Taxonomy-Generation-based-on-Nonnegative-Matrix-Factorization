@@ -9,6 +9,39 @@ import os
 
 MAX_LEVEL = 6
 
+# Initialize the all matrix
+MATRIX_WU = "W_u.npz"
+MATRIX_WV = "W_v.npz"
+MATRIX_DU = "D_u.npz"
+MATRIX_DV = "D_v.npz"
+
+# Initialize the number of cluster
+NUM_CLUSTER = 5
+
+STEPS = 100
+LAMBDA_U = 0.1
+LAMBDA_V = 0.1
+
+# Initialize type of visualization: 0 for PCA and 1 for choosing the important.
+VISUAL_TYPE = 1
+
+# Initialize type of purification:
+# 0 for not to delete noise
+# 1 for deleting noise during this layer training until there is no noise
+# 2 for deleting noise when preparing the next level\
+PURIFY_TYPE = 0
+PURIFY_PROB = 0.4
+
+MATRIX_X = "buchai_POI_matrix.npz"
+POI_LST = "buchai_POI_name1.pickle"
+WORD_LST = "buchai_POI_dic1.pickle"
+POI_COMMENT = "buchai_POI_comment.txt"
+
+# Initialize the constraint: False for not using constraint and True for the opposite.
+FLAG_U = False
+FLAG_V = False
+
+
 class Node:
     def __init__(self, node_dir):
         self.nodeSelf = node_dir

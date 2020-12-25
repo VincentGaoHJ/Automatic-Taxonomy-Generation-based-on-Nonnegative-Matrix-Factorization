@@ -8,9 +8,10 @@ Created on 2019/3/23
 import os
 import pickle
 import numpy as np
-from src.config import load_init_params
 from prettytable import PrettyTable
 from PIL import Image, ImageDraw, ImageFont
+from src.config import (
+    POI_LST, WORD_LST)
 
 
 def create_table_img(data, img_name, **kwargs):
@@ -194,10 +195,12 @@ def sort_and_top(mat, n, POI_name, POI_dic, type):
 
 
 def create_table(U, V_convert, node, step):
-    pd = load_init_params()
-    fr1 = open(node.data_dir + '\\' + pd["list_poi"], 'rb')
+    poi_lst_path = os.path.join(node.data_dir, POI_LST)
+    fr1 = open(poi_lst_path, 'rb')
     POI_name = pickle.load(fr1)
-    fr2 = open(node.data_dir + '\\' + pd["list_word"], 'rb')
+
+    word_lst_path = os.path.join(node.data_dir, WORD_LST)
+    fr2 = open(word_lst_path, 'rb')
     POI_dic = pickle.load(fr2)
 
     n = 20

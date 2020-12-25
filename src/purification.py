@@ -7,20 +7,16 @@
 """
 
 import os
-from src import nmf
-import time
-import shutil
 import pickle
-import pandas
-import datetime
 import numpy as np
 import scipy.sparse as sp
 from src.NextPOI import next_poi
-from src.config import load_init_params
-from utils.config import EXPERIMENT_DIR, PROCESSED_DATA
 from src.func.matrix_manipulation import normalize
+from src.config import (
+    POI_LST, WORD_LST, POI_COMMENT, MATRIX_X, PURIFY_PROB)
 
-def purification_prepare(mat, mat_x, prob):
+
+def purification_prepare(mat, mat_x):
     """
     输出所有景点中那些噪音景点（其属于每一类的概率都不大于某个阈值）
     在噪音景点中选择真噪音和真上级
@@ -51,7 +47,7 @@ def purification_prepare(mat, mat_x, prob):
         # 找到最大值最小的那个
         b = min(poi_max)
         # 如果最大值最小的大于阈值，说明没有噪声了
-        if b >= prob:
+        if b >= PURIFY_PROB:
             break
         # 如果最大值最小的小于阈值，则说明还有噪声，那就判断到底是真噪声还是真上级
         else:
@@ -75,15 +71,15 @@ def purification(node, delete_list, superior_list):
     :return:
     """
 
-    pd = load_init_params()
-
     # 打开删除前的评论文本
-    with open(node.data_dir + '\\' + pd['POI_comment'], 'r') as f:
+    poi_comment_path = os.path.join(node.data_dir, POI_COMMENT)
+    with open(poi_comment_path, 'r') as f:
         comment_data = f.read().split('\n')
         del comment_data[-1]
 
     # 读入删除前景点的中文list
-    fr1 = open(node.data_dir + '\\' + pd['list_poi'], 'rb')
+    poi_lst_path = os.path.join(node.data_dir, POI_LST)
+    fr1 = open(poi_lst_path, 'rb')
     list_poi = pickle.load(fr1)
 
     delete_list_name = list(list_poi[k] for k in delete_list)
@@ -107,22 +103,24 @@ def purification(node, delete_list, superior_list):
     new_X, new_list_word, new_comment_data = next_poi(index_list, comment_data)
 
     # 写入本层新的本类poi的评论文件
-    with open(node.data_dir + '\\' + pd['POI_comment'], 'w') as f:
+    poi_comment_path = os.path.join(node.data_dir, POI_COMMENT)
+    with open(poi_comment_path, 'w') as f:
         for line in new_comment_data:
             f.write(line)
             f.write('\n')
 
     # 写入本层新的景点列表
-    list_file = open(node.data_dir + '\\' + pd['list_poi'], 'wb')
+    poi_lst_path = os.path.join(node.data_dir, POI_LST)
+    list_file = open(poi_lst_path, 'wb')
     pickle.dump(new_list_poi, list_file)
     list_file.close()
 
     # 写入本层新的词列表
-    list_file = open(node.data_dir + '\\' + pd['list_word'], 'wb')
+    word_lst_path = os.path.join(node.data_dir, WORD_LST)
+    list_file = open(word_lst_path, 'wb')
     pickle.dump(new_list_word, list_file)
     list_file.close()
 
     # 写入本层新的X矩阵
-    sp.save_npz(node.data_dir + '\\' + pd['matrix_X'], new_X, True)
-
-
+    matrix_x_path = os.path.join(node.data_dir, MATRIX_X)
+    sp.save_npz(matrix_x_path, new_X, True)

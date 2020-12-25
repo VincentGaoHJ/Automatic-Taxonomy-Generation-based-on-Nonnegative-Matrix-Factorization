@@ -7,7 +7,9 @@
 """
 import os
 import shutil
-from src.config import load_init_params
+from src.config import (
+    POI_LST, WORD_LST, POI_COMMENT, FLAG_U, FLAG_V,
+    MATRIX_X, MATRIX_WU, MATRIX_WV, MATRIX_DU, MATRIX_DV)
 
 
 def create_node_dir(node):
@@ -27,7 +29,7 @@ def create_node_dir(node):
     os.makedirs(node.result_dir)
 
 
-def copy_file(source_dir, target_dir, flag_U, flag_V, level):
+def copy_file(source_dir, target_dir, level):
     """
     拷贝文件
     :param source_dir: 源文件夹路径
@@ -39,18 +41,17 @@ def copy_file(source_dir, target_dir, flag_U, flag_V, level):
         如果级数不为0，那么只有景点字典需要拷贝，其他都需要主动生成。
     :return: None
     """
-    pd = load_init_params()
     # current_folder是‘模拟’文件夹下所有子文件名组成的一个列表
     # current_folder = os.listdir(source_dir)
     current_folder = []
     if level == 1:
-        current_folder = [pd["matrix_X"], pd['list_poi'], pd['list_word'], pd["POI_comment"]]
-        if flag_U is True:
-            current_folder.append(pd['matrix_W_u'])
-            current_folder.append(pd['matrix_D_u'])
-        if flag_V is True:
-            current_folder.append(pd['matrix_W_v'])
-            current_folder.append(pd['matrix_D_v'])
+        current_folder = [MATRIX_X, POI_LST, WORD_LST, POI_COMMENT]
+        if FLAG_U is True:
+            current_folder.append(MATRIX_WU)
+            current_folder.append(MATRIX_DU)
+        if FLAG_V is True:
+            current_folder.append(MATRIX_WV)
+            current_folder.append(MATRIX_DV)
 
     # 第二部分，将名称为file的文件复制到名为file_dir的文件夹中
     for x in current_folder:
@@ -60,3 +61,5 @@ def copy_file(source_dir, target_dir, flag_U, flag_V, level):
         target_file = target_dir + '\\' + x
         # 将指定的文件source_file复制到target_file
         shutil.copy(source_file, target_file)
+
+

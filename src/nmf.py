@@ -9,8 +9,9 @@ import os
 import numpy as np
 import scipy.sparse as sp
 from src.visual_func.visualize import visualize
-from src.config import load_init_params
 from src.visual_func.table_image import create_table
+from src.config import (
+    STEPS, LAMBDA_U, LAMBDA_V, FLAG_U, FLAG_V)
 
 
 def select_rows_from_csr_mtx(csr_mtx, row_head_indices, row_tail_indices):
@@ -36,7 +37,7 @@ def select_rows_from_csr_mtx(csr_mtx, row_head_indices, row_tail_indices):
     return csr_mtx
 
 
-def loss(X, U, H, V, D_u, D_v, W_u, W_v, flag_U, flag_V, lamda_u, lamda_v):
+def loss(X, U, H, V, D_u, D_v, W_u, W_v, lamda_u, lamda_v):
     # print("[loss]Part1")
     i = 0
     sta1 = 0
@@ -58,13 +59,13 @@ def loss(X, U, H, V, D_u, D_v, W_u, W_v, flag_U, flag_V, lamda_u, lamda_v):
         sta1 += sta1_temp
 
     sta3 = 0
-    if flag_U:
+    if FLAG_U:
         # print("[loss]Part3")
         Part3 = U.T * (D_u - W_u) * U
         sta3 = lamda_u * np.trace(Part3.toarray())
 
     sta5 = 0
-    if flag_V:
+    if FLAG_V:
         # print("[loss]Part5")
         Part5 = V.T * (D_v - W_v) * V
         sta5 = lamda_v * np.trace(Part5.toarray())
@@ -109,11 +110,10 @@ def has_nan(x):
     return x
 
 
-def NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, flag_U, flag_V, node, visual_type):
-    pd = load_init_params()
-    steps = pd["steps"]
-    lamda_u = pd["lamda_u"]
-    lamda_v = pd["lamda_v"]
+def NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, node):
+    steps = STEPS
+    lamda_u = LAMBDA_U
+    lamda_v = LAMBDA_V
     loss_matrix = None
 
     # 设置可视化进度条
@@ -131,7 +131,7 @@ def NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, flag_U, flag_V, node, visual_type):
 
         # Update matrix U
         # print("[NMF]Update matrix U")
-        if flag_U:
+        if FLAG_U:
             me = X * V * H.T + lamda_u * W_u * U
             de = U * H * (V.T * V) * H.T + lamda_u * D_u * U
         else:
@@ -141,7 +141,7 @@ def NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, flag_U, flag_V, node, visual_type):
 
         # Update matrix V
         # print("[NMF]Update matrix V")
-        if flag_V:
+        if FLAG_V:
             me = X.T * U * H + lamda_v * W_v * V
             de = V * H.T * (U.T * U) * H + lamda_v * D_v * V
         else:
@@ -151,7 +151,7 @@ def NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, flag_U, flag_V, node, visual_type):
 
         # loss
         # print("[NMF]Counting loss")
-        row = loss(X, U, H, V, D_u, D_v, W_u, W_v, flag_U, flag_V, lamda_u, lamda_v)
+        row = loss(X, U, H, V, D_u, D_v, W_u, W_v, lamda_u, lamda_v)
         row = np.array(row, dtype=float)
         print("[{step}/{steps} loss]Results: ".format(step=step, steps=steps), row[0], row[1], row[2], row[3])
         if loss_matrix is not None:
@@ -165,7 +165,7 @@ def NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, flag_U, flag_V, node, visual_type):
             print("[{step}/{steps} NMF]Visualize the table".format(step=step, steps=steps))
             create_table(U, V_convert, node, step)
             print("[{step}/{steps} NMF]Visualize the image".format(step=step, steps=steps))
-            visualize(U, V_convert, loss_matrix, node, step, visual_type)
+            visualize(U, V_convert, loss_matrix, node, step)
 
         # save model
         if step % 100 == 1:

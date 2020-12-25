@@ -12,6 +12,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 from mpl_toolkits.mplot3d import Axes3D
+from src.config import (
+    VISUAL_TYPE)
 
 
 def normalize(data):
@@ -21,7 +23,7 @@ def normalize(data):
     return data
 
 
-def visualize(U, V_convert, loss_matrix, node, step, visual_type):
+def visualize(U, V_convert, loss_matrix, node, step):
     target_names = ["dimension-1", "dimension-2", "dimension-3"]
     feature_names = ["class-1", "class-2", "class-3"]
     figure_names = ["Loss of Matrix U", "Loss of Matrix V", "Loss of Matrix X", "Loss of Over-all"]
@@ -33,7 +35,7 @@ def visualize(U, V_convert, loss_matrix, node, step, visual_type):
     X_U = normalize(X_U)
     X_V = normalize(X_V)
 
-    if visual_type == 0:
+    if VISUAL_TYPE == 0:
         pca = PCA(n_components=3)
         X_U = pca.fit_transform(X_U)
         X_V = pca.fit_transform(X_V)

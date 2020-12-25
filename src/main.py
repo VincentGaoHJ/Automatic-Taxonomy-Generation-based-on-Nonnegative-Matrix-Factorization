@@ -8,19 +8,21 @@ Created on Fri Feb  1 14:58:57 2019
 import os
 
 import time
-import shutil
 import pickle
-import pandas
 import datetime
 import numpy as np
 import scipy.sparse as sp
 from src.nmf import NMF_sp
-from src.config import load_init_params, Node, MAX_LEVEL
-from src.NextPOI import next_poi
+from src.config import (
+    Node, FLAG_U, FLAG_V,
+    MAX_LEVEL, NUM_CLUSTER, VISUAL_TYPE, PURIFY_TYPE,
+    PURIFY_PROB, POI_LST, WORD_LST,
+    MATRIX_X, MATRIX_WU, MATRIX_WV, MATRIX_DU, MATRIX_DV)
 from src.save_to_node_dir import write_results
 from src.func.node_manipulation import create_node_dir, copy_file
 from src.purification import purification_prepare, purification
 from utils.config import EXPERIMENT_DIR, PROCESSED_DATA
+from utils.logger import logger
 
 
 def create_dir():
@@ -47,11 +49,12 @@ def pre_check_match(mat, node):
     """
 
     flag = True
-
-    fr1 = open(node.data_dir + '\\' + pd['list_poi'], 'rb')
+    poi_lst_path = os.path.join(node.data_dir, POI_LST)
+    fr1 = open(poi_lst_path, 'rb')
     list_poi = pickle.load(fr1)
 
-    fr1 = open(node.data_dir + '\\' + pd['list_word'], 'rb')
+    word_lst_path = os.path.join(node.data_dir, WORD_LST)
+    fr1 = open(word_lst_path, 'rb')
     list_word = pickle.load(fr1)
 
     if mat.shape[0] != len(list_poi):
@@ -77,7 +80,8 @@ def pre_check_min(mat, k):
     return flag
 
 
-def prepare_matrix(k, node, flag_U, flag_V):
+def prepare_matrix(node):
+    k = NUM_CLUSTER
     W_u = None
     D_u = None
     W_v = None
@@ -85,19 +89,24 @@ def prepare_matrix(k, node, flag_U, flag_V):
 
     # 加载TFIDF矩阵
     print("[main]Loading Matrix X")
-    X = sp.load_npz(node.data_dir + '/' + pd['matrix_X'])
+    matrix_x = os.path.join(node.data_dir, MATRIX_X)
+    X = sp.load_npz(matrix_x)
 
     # Initialize the constraint matrix for comments
-    if flag_U:
+    if FLAG_U:
         print("[main]Loading Matrix W_u & D_u")
-        W_u = sp.load_npz(node.data_dir + '/' + pd["matrix_W_u"])
-        D_u = sp.load_npz(node.data_dir + '/' + pd["matrix_D_u"])
+        matrix_wu_path = os.path.join(node.data_dir, MATRIX_WU)
+        matrix_du_path = os.path.join(node.data_dir, MATRIX_DU)
+        W_u = sp.load_npz(matrix_wu_path)
+        D_u = sp.load_npz(matrix_du_path)
 
     # Initialize the constraint matrix for spots
-    if flag_V:
+    if FLAG_V:
         print("[main]Loading Matrix W_v & D_v")
-        W_v = sp.load_npz(node.data_dir + '/' + pd["matrix_W_v"])
-        D_v = sp.load_npz(node.data_dir + '/' + pd["matrix_W_v"])
+        matrix_wv_path = os.path.join(node.data_dir, MATRIX_WV)
+        matrix_dv_path = os.path.join(node.data_dir, MATRIX_DV)
+        W_v = sp.load_npz(matrix_wv_path)
+        D_v = sp.load_npz(matrix_dv_path)
 
     n = X.shape[0]
     m = X.shape[1]
@@ -112,158 +121,100 @@ def prepare_matrix(k, node, flag_U, flag_V):
     return W_u, D_u, W_v, D_v, U, H, V, X
 
 
-def classify(node, mat, list_poi, num):
-    """
-    一共为下一层要准备4个文件（如果没有约束的话），新的X矩阵，新景点的list，新词的list和选中景点的comment文件
-    :param node:
-    :param mat: 这一层景点的概率矩阵
-    :param list_poi: 这一层景点的list
-    :param num: 下一层第num类的
-    :return:
-    """
-    matrix = mat.toarray()
-    # matrix = normalize(matrix)
-
-    # 顺序输出POI所属的类别
-    class_POI = matrix.argmax(axis=1)
-
-    # 输出属于这一类的景点的列表索引值
-    index = np.where(class_POI == num)
-
-    index_list = index[0].tolist()
-
-    # 生成新的景点的list
-    list_poi = np.array(list_poi)
-    new_list_poi = list_poi[index_list]
-    new_list_poi = new_list_poi.tolist()
-
-    # 生成新的X矩阵，词的list以及新的评论文件
-
-    with open(node.data_dir + '\\' + pd['POI_comment'], 'r') as f:
-        comment_data = f.read().split('\n')
-        del comment_data[-1]
-    new_X, new_list_word, new_comment_data = next_poi(index_list, comment_data)
-
-    return new_list_poi, new_X, new_list_word, new_comment_data
-
-
-def recursion(k, level, flag_U, flag_V, node, visual_type, purify_type, purify_prob):
+def recursion(level, node):
     """
     递归函数，重点
-    :param k: the number of cluster
     :param level: the level of current node
-    :param flag_U: the constraint of U: False for not using constraint and True for the opposite.
-    :param flag_V: the constraint of V: False for not using constraint and True for the opposite.
     :param node: 当前节点的对象
-    :param visual_type:
     :return:
     """
     if level > MAX_LEVEL:
         return
 
-    print(' ========================== Running level ', level, 'Node', node.nodeSelf,
+    print(' ========================== Running level ', level, 'Node', node.nodeSelf.split('data')[-1],
           ' ==========================')
 
     start = time.time()
 
     # 如果本节点没有生成初始矩阵（有可能是没有数据），则跳过这个节点
     try:
-        W_u, D_u, W_v, D_v, U, H, V, X = prepare_matrix(k, node, flag_U, flag_V)
+        W_u, D_u, W_v, D_v, U, H, V, X = prepare_matrix(node)
     except Exception:
         return
 
-    print('[Main] 构建初始矩阵完成')
-
+    logger.info('[Main] 构建初始矩阵完成')
     # 检查这个文件夹下面的矩阵和矩阵相关的两个list的行数和列数是否匹配
+    logger.info('检查矩阵和矩阵相关的两个list的行数和列数是否匹配')
     if not pre_check_match(X, node):
         raise Exception("The matrix, list of pois and list of words do not match...")
 
     # 检查矩阵X的行和列是否大于聚类个数，若小于聚类个数则直接返回，这一层不进行聚类
-    if not pre_check_min(X, k):
+    logger.info('检查矩阵X的行和列是否大于聚类个数')
+    if not pre_check_min(X, NUM_CLUSTER):
         print("The Number of rows or columns of a matrix is less than of clusters.")
         return
 
     end = time.time()
     print('[Main] Done reading the full data using time %s seconds' % (end - start))
 
-    if purify_type == 0:
-        U, H, V = NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, flag_U, flag_V, node, visual_type)
+    if PURIFY_TYPE == 0:
+        U, H, V = NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, node)
 
-    elif purify_type == 1:
+    elif PURIFY_TYPE == 1:
         while 1:
-            print("开始运行")
-            U, H, V = NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, flag_U, flag_V, node, visual_type)
-            print("开始筛选")
-            delete_list, superior_list = purification_prepare(U, X, purify_prob)
+            logger.info('开始去噪')
+            U, H, V = NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, node)
+            logger.info('准备去噪文件')
+            delete_list, superior_list = purification_prepare(U, X)
             if len(superior_list) != 0:
-                print(print('[Main] 本层发现{}个属于上级的词汇'.format(len(superior_list))))
+                logger.info('[Main] 本层发现{}个属于上级的词汇'.format(len(superior_list)))
             if len(delete_list) == 0:
-                print(print('[Main] 无需迭代更新本层的初始文件'))
+                logger.info('[Main] 无需迭代更新本层的初始文件')
                 break
-            print('[Main] 准备删除{}个噪点景点并更新本层的初始文件'.format(len(delete_list)))
+            logger.info('[Main] 准备删除{}个噪点景点并更新本层的初始文件'.format(len(delete_list)))
             # 更新本层data中的初始文件
             purification(node, delete_list, superior_list)
-            print('[Main] 更新本层的初始文件完成')
+            logger.info('[Main] 更新本层的初始文件完成')
             # 重新读入本层data中的初始文件并生成初始矩阵
-            W_u, D_u, W_v, D_v, U, H, V, X = prepare_matrix(k, node, flag_U, flag_V)
-            print('[Main] 重新构建初始矩阵完成')
+            W_u, D_u, W_v, D_v, U, H, V, X = prepare_matrix(node)
+            logger.info('[Main] 重新构建初始矩阵完成')
 
     # 将这层的结果写进这层的result文件夹中，然后根据需要创建下一层的文件
     # 如果结果中的第n类中的数量大于阈值，并且不是倒数第一层，则需要创建下一层文件夹
     # 循环创建下一层文件夹，并且准备下一层所需要的所有初始矩阵
 
     if level <= MAX_LEVEL - 1:
+        logger.info(f'当前层数为 {level}，不为最后一层，需要创建下一层文件夹')
         V_convert = V * H.T
-        write_results(k, level, node, U, V_convert)
+        write_results(level, node, U, V_convert)
 
-    # 递归进入下一层
-    for child in range(k):
+    logger.info('递归进入下一层')
+    for child in range(NUM_CLUSTER):
         child_path = os.path.join(node.nodeSelf, str(child))
         if os.path.exists(child_path):
             child_node = Node(child_path)
-            recursion(k, level + 1, flag_U, flag_V, child_node, visual_type, purify_type, purify_prob)
+            recursion(level + 1, child_node)
 
 
-def main(k, visual_type, purify_type, flag_U, flag_V, purify_prob):
+def main():
     """
     主函数，配置准备文件并进入递归
-    :param k: the number of cluster
-    :param visual_type: type of visualization: 0 for PCA and 1 for choosing the important.
-    :param flag_U: the constraint of U: False for not using constraint and True for the opposite.
-    :param flag_V: the constraint of V: False for not using constraint and True for the opposite.
     :return: None
     """
-
+    # Initiate the parameter
     level = 1
 
     # 创建根节点以及本次实验根文件夹
-
     node = create_dir()
     create_node_dir(node)
 
     # 将数据拷贝到本次实验文件夹中
-    copy_file(PROCESSED_DATA, node.data_dir, flag_U, flag_V, level)
+    copy_file(PROCESSED_DATA, node.data_dir, level)
 
-    recursion(k, level, flag_U, flag_V, node, visual_type, purify_type, purify_prob)
+    recursion(level, node)
 
     print(' ========================== Done running the program ==========================')
 
 
 if __name__ == "__main__":
-    pd = load_init_params()
-
-    # Initialize the number of cluster
-    k = pd['num_cluster']
-
-    # Initialize type of visualization: 0 for PCA and 1 for choosing the important.
-    visual_type = pd['visual_type']
-
-    # Initialize type of visualization: 0 for PCA and 1 for choosing the important.
-    purify_type = pd['purify_type']
-    purify_prob = pd['purify_prob']
-
-    # Initialize the constraint: False for not using constraint and True for the opposite.
-    flag_U = False
-    flag_V = False
-
-    main(k, visual_type, purify_type, flag_U, flag_V, purify_prob)
+    main()
