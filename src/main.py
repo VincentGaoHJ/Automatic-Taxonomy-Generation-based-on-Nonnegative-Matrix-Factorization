@@ -6,7 +6,7 @@ Created on Fri Feb  1 14:58:57 2019
 """
 
 import os
-from src import nmf
+
 import time
 import shutil
 import pickle
@@ -14,8 +14,10 @@ import pandas
 import datetime
 import numpy as np
 import scipy.sparse as sp
-from src.NextPOI import next_poi
+from src.nmf import NMF_sp
 from src.config import load_init_params
+from src.NextPOI import next_poi
+from src.purification import purification_prepare, purification
 from utils.config import EXPERIMENT_DIR, PROCESSED_DATA
 
 MAX_LEVEL = 6
@@ -316,118 +318,6 @@ def write_results(k, level, node, U, V_convert):
             sp.save_npz(child_node.data_dir + '\\' + pd['matrix_X'], new_X, True)
 
 
-# 有多少个类就准备多少个list
-def class_list_pre(class_num):
-    prepare_list = locals()
-    for i in range(class_num):
-        prepare_list['class_' + str(i)] = []
-    return prepare_list
-
-
-def purification_prepare(mat, mat_x, prob):
-    """
-    输出所有景点中那些噪音景点（其属于每一类的概率都不大于某个阈值）
-    在噪音景点中选择真噪音和真上级
-    输出两个列表，一个是该删除的，一个是该上推的
-    :param mat: 输入矩阵
-    :param mat_x: 原始X矩阵
-    :return:
-        delete_list: 要删除的景点的下标的列表
-        superior_list: 属于上级的景点的下标的列表
-    """
-    print("开始筛选了")
-    matrix = mat.toarray()
-    matrix_x = mat_x.toarray()
-    matrix = normalize(matrix)
-
-    poi_max = np.max(matrix, axis=1).tolist()
-    poi_impor = np.sum(matrix_x, axis=1)
-    poi_impor_list = poi_impor.tolist()
-    print(poi_impor_list)
-    poi_impor_mean = np.mean(poi_impor)
-    poi_impor_median = np.median(poi_impor)
-    print(poi_impor_mean)
-    print(poi_impor_median)
-
-    delete_list = []
-    superior_list = []
-    while 1:
-        # 找到最大值最小的那个
-        b = min(poi_max)
-        # 如果最大值最小的大于阈值，说明没有噪声了
-        if b >= prob:
-            break
-        # 如果最大值最小的小于阈值，则说明还有噪声，那就判断到底是真噪声还是真上级
-        else:
-            temp = poi_max.index(b)
-            if poi_impor_list[temp] > poi_impor_median:
-                superior_list.append(temp)
-            else:
-                delete_list.append(temp)
-            poi_max[temp] = 2
-
-    return delete_list, superior_list
-
-
-def purification(node, delete_list, superior_list):
-    """
-    根据要删除的列表生成新的评论文本，新的矩阵X，以及新的景点列表和词列表
-    用新的新的评论文本，新的矩阵X，以及新的景点列表和词列表生成本层的初始文件
-    :param node: 当前节点对象
-    :param delete_list: 要删除的文件夹
-    :param superior_list: 上推的文件夹
-    :return:
-    """
-
-    # 打开删除前的评论文本
-    with open(node.data_dir + '\\' + pd['POI_comment'], 'r') as f:
-        comment_data = f.read().split('\n')
-        del comment_data[-1]
-
-    # 读入删除前景点的中文list
-    fr1 = open(node.data_dir + '\\' + pd['list_poi'], 'rb')
-    list_poi = pickle.load(fr1)
-
-    delete_list_name = list(list_poi[k] for k in delete_list)
-    superior_list_name = list(list_poi[k] for k in superior_list)
-
-    print('[Main] 删除的噪点为：')
-    print(delete_list_name)
-    print('[Main] 上推的对象为：')
-    print(superior_list_name)
-
-    index_list = list(range(len(list_poi)))
-
-    index_list = [item for item in index_list if item not in delete_list]
-
-    # 生成新的景点的中文的list
-    list_poi = np.array(list_poi)
-    new_list_poi = list_poi[index_list]
-    new_list_poi = new_list_poi.tolist()
-
-    # 生成新的X矩阵，词的list以及新的评论文件
-    new_X, new_list_word, new_comment_data = next_poi(index_list, comment_data)
-
-    # 写入本层新的本类poi的评论文件
-    with open(node.data_dir + '\\' + pd['POI_comment'], 'w') as f:
-        for line in new_comment_data:
-            f.write(line)
-            f.write('\n')
-
-    # 写入本层新的景点列表
-    list_file = open(node.data_dir + '\\' + pd['list_poi'], 'wb')
-    pickle.dump(new_list_poi, list_file)
-    list_file.close()
-
-    # 写入本层新的词列表
-    list_file = open(node.data_dir + '\\' + pd['list_word'], 'wb')
-    pickle.dump(new_list_word, list_file)
-    list_file.close()
-
-    # 写入本层新的X矩阵
-    sp.save_npz(node.data_dir + '\\' + pd['matrix_X'], new_X, True)
-
-
 def recursion(k, level, flag_U, flag_V, node, visual_type, purify_type, purify_prob):
     """
     递归函数，重点
@@ -468,12 +358,12 @@ def recursion(k, level, flag_U, flag_V, node, visual_type, purify_type, purify_p
     print('[Main] Done reading the full data using time %s seconds' % (end - start))
 
     if purify_type == 0:
-        U, H, V = nmf.NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, flag_U, flag_V, node, visual_type)
+        U, H, V = NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, flag_U, flag_V, node, visual_type)
 
     elif purify_type == 1:
         while 1:
             print("开始运行")
-            U, H, V = nmf.NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, flag_U, flag_V, node, visual_type)
+            U, H, V = NMF_sp(X, U, H, V, D_u, W_u, D_v, W_v, flag_U, flag_V, node, visual_type)
             print("开始筛选")
             delete_list, superior_list = purification_prepare(U, X, purify_prob)
             if len(superior_list) != 0:
