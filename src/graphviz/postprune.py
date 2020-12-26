@@ -6,29 +6,10 @@ Created on Wed Jun  5 17:42:09 2019
 """
 
 import os
-import shutil
+
 import numpy as np
 import scipy.sparse as sp
-
-
-# 准备工作
-def init(data_path):
-    if not os.path.exists(data_path):
-        raise Exception("找不到原始结果保存文件夹")
-    visual_path = data_path + "-result"
-    if not os.path.exists(visual_path):
-        raise Exception("找不到完整结果保存文件夹")
-    visual_path_data = os.path.join(visual_path, 'data')
-    if not os.path.exists(visual_path_data):
-        raise Exception("找不到完整结果数据文件夹")
-
-    # 创建保存剪枝后结果文件夹
-    visual_path_datacut = os.path.join(visual_path, 'dataPrune')
-    if os.path.exists(visual_path_datacut):
-        shutil.rmtree(visual_path_datacut)
-    shutil.copytree(visual_path_data, visual_path_datacut)
-
-    return visual_path_datacut
+from src.graphviz.func import postprune_init
 
 
 # 获得所有文件夹目录
@@ -92,7 +73,7 @@ def Getmatrix_dis(ma):
 
     # 开方得到欧式距离
     ma_dis = np.sqrt(SqED)
-    
+
     return ma_dis, ma.shape
 
 
@@ -117,47 +98,47 @@ def Getlist(data, k, U):
     return sub_list
 
 
-def GetSE(X, U, sub = 5, alpha = 4):
+def GetSE(X, U, sub=5, alpha=4):
     # 获得全部的距离
     X_dis, X_shape = Getmatrix_dis(X)
     X_dis_list = X_dis.tolist()[0]
-    
+
     # 总距离
     X_dis_sum = sum(X_dis_list)
-    
+
     # 获得子矩阵索引
     sub_list = Getlist(X, 5, U)
-    
+
     sub_SE = []
     for sub_list_ in sub_list:
         sub_data = X[sub_list_[0]]
         for i in sub_list_[1:]:
             sub_data = sp.vstack((sub_data, X[i]))
-            
+
         # 获得子矩阵的全部的距离
         sub_dis, sub_shape = Getmatrix_dis(sub_data)
         sub_dis_list = sub_dis.tolist()[0]
-        
+
         # 总距离
         sub_dis_sum = sum(sub_dis_list)
-        sub_SE.append( sub_dis_sum )
-    
-    sub_SSE = sum(sub_SE)    
+        sub_SE.append(sub_dis_sum)
+
+    sub_SSE = sum(sub_SE)
     loss = (X_dis_sum - sub_SSE) - alpha * sub
-    
+
     if loss < 0:
         result = False
     else:
         result = True
-            
+
     return X_dis_sum, sub_SSE, loss, result, X_dis_sum - sub_SSE, X_shape
 
 
-def postPrune(data_path):
+def postPrune(data_dir):
     # 设置要保存的文件夹路径
-    path_datacut = init(data_path)
+    data_path, visual_data_path, visual_datacut_path = postprune_init(data_dir)
     print("[PostPrune] 待进行后剪枝的结果: {}".format(data_path))
-    print("[PostPrune] 后剪枝后结果的保存文件夹: {} ".format(path_datacut))
+    print("[PostPrune] 后剪枝后结果的保存文件夹: {} ".format(visual_datacut_path))
 
     U_name = '\\model\\1001_U_sp.npz'
     X_name = '\\data\\buchai_POI_matrix.npz'
@@ -170,7 +151,7 @@ def postPrune(data_path):
         dir_all.append(dirnext)
         #    print(dirnext)
         dirnext, f = Getdirnext(dirnext)
-    
+
     # 得到所有的文件夹目录
     data_path_text = data_path.split('\\')
 
@@ -214,20 +195,20 @@ def postPrune(data_path):
         shang.append(shangi)
         SSE_all.append(SSE_alli)
         SSE_result.append(SSE_resulti)
-    
+
     # 找到存放所有 csv文件的文件夹
-    data_csv_path = path_datacut
-    
+    data_csv_path = visual_datacut_path
+
     csv_all = []
     for file_csv in os.listdir(data_csv_path):
         csv_all.append(file_csv)
-    csv_all.remove('results.txt')
-    
+    # csv_all.remove('results.txt')
+
     csv_name = []
     for file_csv in csv_all:
         name = file_csv.split('-')
         csv_name.append(name[0])
-    
+
     filename_remove = []
     for i in range(len(SSE_result)):
         result = SSE_result[i]
@@ -238,7 +219,7 @@ def postPrune(data_path):
             else:
                 sub_file = ''.join(get_filename)
             resulti = result[j]
-            
+
             if resulti != True:
                 length = len(sub_file)
                 for t in range(len(csv_name)):
@@ -247,18 +228,19 @@ def postPrune(data_path):
                         if sub_file != name:
                             print(name)
                             filename_sub = data_csv_path + os.path.sep + name + '-feature.csv'
-                            filename_sub_word = data_csv_path + os.path.sep+ name + '-word.csv'
-                            filename_sub_poi = data_csv_path + os.path.sep+ name + '-poi.csv'
+                            filename_sub_word = data_csv_path + os.path.sep + name + '-word.csv'
+                            filename_sub_poi = data_csv_path + os.path.sep + name + '-poi.csv'
                             if os.path.exists(filename_sub):
                                 os.remove(filename_sub)
                                 os.remove(filename_sub_word)
                                 os.remove(filename_sub_poi)
                                 filename_remove.append(filename_sub)
+
+
 #                                print('删除', name)
 
 
 if __name__ == '__main__':
     # 设置要可视化的源文件夹
     data_path = '2019-06-08-18-45-01'
-
     postPrune(data_path)

@@ -11,6 +11,7 @@ from src.graphviz.textrank import textrank
 from src.graphviz.postprune import postPrune
 from src.graphviz.generate import generatetxt
 from src.graphviz.preprocess import graphv_prep
+from utils.config import EXPERIMENT_DIR
 
 
 def load_nodes(node_file, min_level, max_level):
@@ -151,7 +152,7 @@ def draw_graph(node_file, output_file, context_list, min_level, max_level):
 
 
 def graphviz(root_dir):
-    img_dir = root_dir + '-result'
+    img_dir = os.path.join(EXPERIMENT_DIR, f"{root_dir}-result")
 
     data_root = ["data", "dataPrune"]
     # data_root = ["data"]
@@ -168,26 +169,21 @@ def graphviz(root_dir):
         for context in context_list:
             for level in level_list:
                 print("正在写入 {} 的图片，包含级别为 {} 级".format(str(context), str(level)))
+                node_file_path = os.path.join(img_dir, data_dir, 'results.txt')
                 if len(context) == 1:
-                    draw_graph(img_dir + '\\' + data_dir + '\\results.txt',
-                               img_dir + '\\' + root_dir[7:-6] + '-' + context[0] + '-' + str(level) + data_dir[4:],
-                               context, min_level=0, max_level=level)
+                    output_file_path = os.path.join(img_dir,
+                                                    f'{root_dir[:13]}-{context[0]}-{str(level)}{data_dir[4:]}')
                 else:
-                    draw_graph(img_dir + '\\' + data_dir + '\\results.txt',
-                               img_dir + '\\' + root_dir[7:-6] + '-overall-' + str(level) + data_dir[4:],
-                               context, min_level=0, max_level=level)
+                    output_file_path = os.path.join(img_dir,
+                                                    f'{root_dir[:13]}-overall-{str(level)}{data_dir[4:]}')
+                draw_graph(node_file_path, output_file_path, context,
+                           min_level=0, max_level=level)
 
     # 删除中间文件
     del_files(img_dir)
 
 
-
 if __name__ == '__main__':
     # 设置要可视化的源文件夹
-    visual_dir = "2020-12-26-02-38-21"
-
-    textrank(visual_dir)  # 对每一个节点生成 text rank 的结果并保存
-    graphv_prep(visual_dir)  # 将原始数据文件中有用的结果文件移动到可视化文件夹中
-    postPrune(visual_dir)  # 对结果进行后剪枝，并且保存后剪枝结果
-    generatetxt(visual_dir)  # 将后剪枝前后的结果生成绘图准备文件
+    visual_dir = "2019-06-08-18-45-01"
     graphviz(visual_dir)  # 利用 graphviz 绘图

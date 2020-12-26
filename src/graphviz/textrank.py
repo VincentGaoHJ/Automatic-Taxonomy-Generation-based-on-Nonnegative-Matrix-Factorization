@@ -10,28 +10,7 @@ import csv
 import pandas as pd
 from jieba import analyse
 from utils.config import EXPERIMENT_DIR, RAW_DATA
-
-def init(data_dir):
-    """
-    准备工作
-    :param data_path: 要 Text Rank 的数据文件夹
-    :return:
-        visual_path_data：生成的 Text Rank 结果的保存文件夹
-    """
-
-    data_path = os.path.join(EXPERIMENT_DIR, data_dir)
-    if not os.path.exists(data_path):
-        raise Exception("找不到要可视化数据的文件夹")
-
-    # 设置可视化结果要保存的文件夹
-    visual_path = data_path + "-result"
-    visual_path_data = os.path.join(visual_path, 'data')
-    if not os.path.exists(visual_path):
-        os.makedirs(visual_path)
-    if not os.path.exists(visual_path_data):
-        os.makedirs(visual_path_data)
-
-    return visual_path_data
+from src.graphviz.func import init
 
 
 def textrank_extract(text, keyword_num=200):
@@ -158,7 +137,7 @@ def Getcompare(dir_past, dir_next_sub):
 
 def textrank(nowdir):
     # 设置要保存的文件夹路径
-    savedir = init(nowdir)
+    nowdir, _, savedir = init(nowdir)
     print("[TextRank] 待生成TextRank结果的初始文件夹: {}".format(nowdir))
     print("[TextRank] 生成的TextRank结果的保存文件夹: {} ".format(savedir))
 
@@ -275,5 +254,5 @@ def textrank(nowdir):
 
 if __name__ == '__main__':
     # 设置要可视化的源文件夹
-    visual_dir = "2020-12-26-02-38-21"
+    visual_dir = "2019-06-08-18-45-01"
     textrank(visual_dir)

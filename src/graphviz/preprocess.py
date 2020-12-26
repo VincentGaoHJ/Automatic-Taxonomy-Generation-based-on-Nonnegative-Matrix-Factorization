@@ -8,6 +8,7 @@
 import os
 import pandas
 from os import walk
+from src.graphviz.func import init
 
 
 class Node:
@@ -15,22 +16,6 @@ class Node:
         self.nodeSelf = node_dir
         self.result_dir = os.path.join(node_dir, "result")
         self.idStr = idStr
-
-
-# 准备工作
-def init(data_path):
-    if not os.path.exists(data_path):
-        raise Exception("找不到要可视化数据的文件夹")
-
-    # 设置可视化结果要保存的文件夹
-    visual_path = data_path + "-result"
-    visual_path_data = os.path.join(visual_path, 'data')
-    if not os.path.exists(visual_path):
-        os.makedirs(visual_path)
-    if not os.path.exists(visual_path_data):
-        os.makedirs(visual_path_data)
-
-    return visual_path, visual_path_data
 
 
 def resave_file(node, visual_path_data):
@@ -54,7 +39,7 @@ def resave_file(node, visual_path_data):
 
 def graphv_prep(data_path):
     # 生成可视化文件夹以及重新保存文件的路径
-    visual_path, visual_path_data = init(data_path)
+    data_path, _, visual_path_data = init(data_path)
 
     # 创建对象
     root_node = Node(data_path, '')
@@ -65,6 +50,5 @@ def graphv_prep(data_path):
 
 if __name__ == '__main__':
     # 设置要可视化的源文件夹
-    data_path = ".\\2019-06-08-18-45-01"
-
-    graphv_prep(data_path)
+    visual_dir = "2019-06-08-18-45-01"
+    graphv_prep(visual_dir)

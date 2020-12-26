@@ -10,6 +10,7 @@ import re
 import pandas
 import numpy as np
 from os import walk
+from utils.config import EXPERIMENT_DIR
 
 
 def prepare(dirs):
@@ -23,7 +24,9 @@ def prepare(dirs):
             if '.csv' in file:
                 file_path = root + "\\" + file
                 file_path_list.append(file_path)
-                file_name = re.split(r'[\\.]\s*', file_path)
+                file_name = file_path.split('experiment')[-1]
+                file_name = re.split(r'[\\.]\s*', file_name)
+                print(file_name)
                 file_name = ''.join(filter(lambda s: isinstance(s, str) and len(
                     s) >= 5 and len(s) <= 15 and s != "dataPrune", file_name))
                 print("读取文件 - {}".format(file_name))
@@ -91,8 +94,8 @@ def generate(file_name_list, dataframe_list, visual_path):
             level += 1
 
 
-def generatetxt(data_path):
-    result_path = data_path + "-result"
+def generatetxt(data_dir):
+    result_path = os.path.join(EXPERIMENT_DIR, f"{data_dir}-result")
 
     data_list = ["data", "dataPrune"]
     # data_list = ["data"]
@@ -115,5 +118,4 @@ def generatetxt(data_path):
 if __name__ == '__main__':
     # 设置要可视化的源文件夹
     data_path = "2019-06-08-18-45-01"
-
     generatetxt(data_path)
